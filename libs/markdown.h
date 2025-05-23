@@ -1,7 +1,9 @@
 #ifndef MARKDOWN_H
 #define MARKDOWN_H
+
 #include <stdio.h>
 #include <stdint.h>
+
 #include "document.h"  
 /**
  * The given file contains all the functions you will be required to complete. You are free to and encouraged to create

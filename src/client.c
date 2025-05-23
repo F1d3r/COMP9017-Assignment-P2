@@ -10,6 +10,9 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "../libs/markdown.h"
+#include "../libs/document.h"
+
 volatile int interupted = 0;
 
 void handle_SIGRTMIN(int sig){
@@ -34,7 +37,11 @@ int main(int argc, char *argv[]){
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
     char buff[BUFF_LEN];
-    bool authorised = false;
+    bool connecting = false;
+    __uint64_t doc_version = 0;
+    __uint64_t doc_len = 0;
+    document* doc = markdown_init();
+
     if(argc != 3){
         printf("Please provide the server PID and your username.\n");
         return 1;
@@ -102,22 +109,44 @@ int main(int argc, char *argv[]){
     printf("Got response: %s.\n", buff);
     if(strcmp(buff, "Reject UNAUTHORISED") == 0){
         printf("Your identify is not authorised.\n");
-        authorised = false;
+        connecting = false;
     }else{
         strcpy(permission, buff);
-        authorised = true;
+        connecting = true;
     }
 
+    // Read the document version
+    memset(buff, 0, BUFF_LEN);
+    read(read_fd, buff, BUFF_LEN);
+    printf("Read document version: %s.\n", buff);
+    doc_version = strtoul(buff, NULL, 10);
+    printf("Got document version: %ld.\n", doc_version);
+
+    // Read the document length
+    memset(buff, 0, BUFF_LEN);
+    read(read_fd, buff, BUFF_LEN);
+    printf("Read document length: %s.\n", buff);
+    doc_len = strtoul(buff, NULL, 10);
+    printf("Got document length: %ld.\n", doc_len);
+    
+    // Read the document content
+    memset(buff, 0, BUFF_LEN);
+    read(read_fd, buff, BUFF_LEN);
+    printf("Read document content: %s.\n", buff);
+    doc->first_chunk->content = realloc(doc->first_chunk->content,
+        sizeof(char)*(strlen(buff)+1));
+    strcpy(doc->first_chunk->content, buff);
+    printf("Got document content: %s.\n", doc->first_chunk->content);
 
     // When the client is not interupted.
-    while(!interupted && authorised){
+    while(!interupted && connecting){
         scanf("%s", buff);
         printf("Got a command: %s.\n", buff);
         if(strcmp(buff, "DISCONNECT") == 0){
             // Write the disconnect into pipe.
             printf("Writing to pipe.\n");
             write(write_fd, buff, strlen(buff));
-            break;
+            connecting = false;
         }else{
             printf("Invalid command.\n");
         }
@@ -125,10 +154,11 @@ int main(int argc, char *argv[]){
 
     
     // Tell the server.
-    printf("Writing to pipe.\n");
-    write(write_fd, "DISCONNECT", strlen("DISCONNECT"));
+    if(interupted){
+        write(write_fd, "DISCONNECT", strlen("DISCONNECT"));
+    }
 
-
+    markdown_free(doc);
     close(read_fd);
     close(write_fd);
     unlink(fifo_name1);

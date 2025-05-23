@@ -13,6 +13,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "../libs/document.h"
+#include "../libs/markdown.h"
+
 
 typedef struct{
     char* username;
@@ -24,6 +27,8 @@ typedef struct{
 volatile int interupted = 0;
 pthread_t threads[MAX_CLIENTS];
 User** users;
+document* doc;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int total_user = 0;
 int clinet_count = 0;
 
@@ -34,8 +39,10 @@ void* server_thread(void* arg){
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
     char command[BUFF_LEN];
+    char buff[BUFF_LEN];
     bool connecting = true;
     pid_t client_pid = *(pid_t*)arg;
+
     printf("Created a new thread for client: %d.\n", client_pid);
 
     // Create fifos to communicate with the client.
@@ -83,8 +90,34 @@ void* server_thread(void* arg){
             strcpy(permission, users[i]->permission_level);
             permission[strlen(permission)] = '\n';
             permission[strlen(permission)] = '\0';
+            // Write permission.
             write(write_fd, permission, strlen(permission));
             printf("Permission written into pipe: %s.\n", permission);
+
+            // Write document details to the pipe.
+            pthread_mutex_lock(&mutex);
+            // Check document.
+            char* doc_content = markdown_flatten(doc);
+            printf("Doc version: %ld.\n", doc->version_num);
+            printf("Doc len: %ld.\n", doc->doc_len);
+            printf("Doc content: %s.\n", doc_content);
+
+            // Write version number.
+            snprintf(buff, sizeof(buff), "%lu\n", doc->version_num);
+            printf("Doc version written into pipe: %s.\n", buff);
+            write(write_fd, buff, strlen(buff));
+            sleep(1);
+            // Write document length.
+            snprintf(buff, sizeof(buff), "%lu\n", doc->doc_len);
+            printf("Doc length written into pipe: %s.\n", buff);
+            write(write_fd, buff, strlen(buff));
+            sleep(1);
+            // Write document content.
+            printf("Document content written into pipe.\n");
+            write(write_fd, doc_content, doc->doc_len);
+            free(doc_content);
+
+            pthread_mutex_unlock(&mutex); 
             break;
         }
     }
@@ -209,6 +242,10 @@ void destroy_users(User** users, int total_user){
 
 
 int main(int argc, char *argv[]){
+    // Initialize the document.
+    doc = markdown_init();
+    markdown_print(doc, stdout);
+
     // Server PID.  
     pid_t server_pid = getpid();
     printf("Server PID: %d.\n", server_pid);
@@ -286,6 +323,7 @@ int main(int argc, char *argv[]){
 
     // Free the users.
     destroy_users(users, total_user);
+    markdown_free(doc);
 
     return 0;
 }
