@@ -26,6 +26,11 @@ TARGETS := server client
 # Default target
 all: $(TARGETS)
 
+markdown.o: $(BIN_DIR)/markdown.o
+
+$(BIN_DIR)/markdown.o: $(SRC_DIR)/markdown.c $(LIBS_DIR)/markdown.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # Compile individual object files
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c $(HDRS)
 	$(CC) $(CFLAGS) -c $< -o $@
