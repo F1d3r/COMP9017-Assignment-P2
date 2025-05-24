@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define MAX_CLIENTS 10
 #define BUFF_LEN 1024
+#define CMD_LEN 256
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,7 @@
 
 #include "../libs/document.h"
 #include "../libs/markdown.h"
+#include "../libs/helper.h"
 
 
 typedef struct{
@@ -47,7 +49,7 @@ void* server_thread(void* arg){
     // Resolve the client pid. As a local variable.
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
-    char command[BUFF_LEN];
+    char command_input[CMD_LEN];
     char buff[BUFF_LEN];
     bool connecting = true;
     pid_t client_pid = *(pid_t*)arg;
@@ -85,7 +87,7 @@ void* server_thread(void* arg){
     printf("Thread listening on %d.\n", read_fd);
     printf("Thread writing on %d.\n", write_fd);
 
-    // Read the request from the fifo for the client.
+    // Read the username written by the client.
     read(read_fd, username, BUFF_LEN);
     printf("Got username from pipe: %s.\n", username);
 
@@ -113,8 +115,7 @@ void* server_thread(void* arg){
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->doc_len);
             snprintf(buff+strlen(buff), sizeof(buff), "%s", doc_content);
-            printf("Message payload:%s |aaaaa.", buff);
-            printf("|||");
+            printf("Message payload:\n%s", buff);
             write(write_fd, buff, strlen(buff));
 
             free(doc_content);
@@ -156,24 +157,25 @@ void* server_thread(void* arg){
         }else if(FD_ISSET(read_fd, &readfds)){
             // There is data in the read_fd.
             // Read and handle the client requests from the pipe.
-            read(read_fd, command, BUFF_LEN);
-            printf("Got command: %s from client: %d.\n", command, client_pid);
+            memset(command_input, 0, CMD_LEN);
+            read(read_fd, command_input, CMD_LEN);
+            printf("Got command: %s from client: %d.\n", command_input, client_pid);
             // Resolve the command.
-            char* token = strtok(command, " ");
-            char* com = token;
-            printf("Got command: %s.\n", com);
-            token = strtok(NULL, " ");
-            char* arg1 = token;
+            char* command;
+            char* arg1;
+            char* arg2;
+            char* arg3;
+            resolve_command(command_input, &command, &arg1, &arg2, &arg3);
+            printf("Got command: %s.\n", command);
             printf("Got argument1: %s.\n", arg1);
-            token = strtok(NULL, " ");
-            char* arg2 = token;
             printf("Got argument2: %s.\n", arg2);
-            token = strtok(NULL, " ");
-            char* arg3 = token;
             printf("Got argument3: %s.\n", arg3);
             // If the command is disconnect.
             if(strcmp(command, "DISCONNECT\n") == 0){
+                connecting = false;
                 break;
+            }else if(strcmp(command, "INSERT") == 0){
+                printf("Got a insert command.\n");
             }
         }
         
@@ -322,7 +324,11 @@ int main(int argc, char *argv[]){
     while (!interupted) {
         fgets(input_buff, sizeof(input_buff), stdin);
         if(strcmp(input_buff, "QUIT\n") == 0){
-            handle_SIGINT(SIGINT);
+            if(clinet_count != 0){
+                printf("QUIT rejected, %d clients still connected.\n", clinet_count);
+            }else{
+                handle_SIGINT(SIGINT);
+            }
         }else if(strcmp(input_buff, "DOC?\n") == 0){
             pthread_mutex_lock(&doc_lock);
             markdown_print(doc, stdout);

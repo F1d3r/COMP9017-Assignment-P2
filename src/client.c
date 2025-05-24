@@ -12,11 +12,19 @@
 #include <string.h>
 #include <sys/select.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #include "../libs/markdown.h"
 #include "../libs/document.h"
+#include "../libs/helper.h"
 
 volatile int interupted = 0;
+
+document* doc;
+log* doc_log;
+pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 void* broadcast_thread(void* arg){
     printf("Broadcast listener thread craeted.\n");
@@ -55,7 +63,6 @@ void* broadcast_thread(void* arg){
         }
     }
 
-
     printf("Broadcast listener terminated.\n");
     return NULL;
 }
@@ -77,6 +84,34 @@ void handle_SIGUSR1(int sig){
 }
 
 
+bool check_command_insert(char* arg1, char* arg2){
+    if(arg2 == NULL){
+        printf("Invaldi command.\n");
+        return false;
+    }
+    uint64_t pos = 0;
+    // Check if the position index an integer. 
+    if(!check_integer(arg1)){
+        printf("Invalid position index.\n");
+        return false;
+    }else{
+        pos = strtol(arg1, NULL, 10);
+        printf("Got position: %ld.\n", pos);
+    }
+    // Check position validation.
+    pthread_mutex_lock(&doc_lock);
+    if(pos > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
+        pthread_mutex_unlock(&doc_lock);
+        return false;
+    }
+    pthread_mutex_unlock(&doc_lock);
+    printf("Valid argument.\n");
+    return true;
+}
+
+
+
 int main(int argc, char *argv[]){
     // Check input arguments.
     long server_pid_value;
@@ -85,8 +120,8 @@ int main(int argc, char *argv[]){
     char buff[BUFF_LEN];
     bool connecting = false;
     
-    document* doc = markdown_init();
-    log* doc_log = init_log();
+    doc = markdown_init();
+    doc_log = init_log();
 
     pthread_t listen_broadcast;
 
@@ -203,22 +238,21 @@ int main(int argc, char *argv[]){
     // Keeps listening from the user input for commands.
     while(!interupted && connecting){
         char command_input[CMD_LEN];
+        char temp[CMD_LEN];
         fgets(command_input, sizeof(command_input), stdin);
-        printf("Got a input: %s.\n", command_input);
+        strcpy(temp, command_input);
 
         // Resolve the command.
-        char* token = strtok(command_input, " ");
-        char* command = token;
+        char* command;
+        char* arg1;
+        char* arg2;
+        char* arg3;
+        resolve_command(temp, &command, &arg1, &arg2, &arg3);
         printf("Got command: %s.\n", command);
-        token = strtok(NULL, " ");
-        char* arg1 = token;
         printf("Got argument1: %s.\n", arg1);
-        token = strtok(NULL, " ");
-        char* arg2 = token;
         printf("Got argument2: %s.\n", arg2);
-        token = strtok(NULL, " ");
-        char* arg3 = token;
         printf("Got argument3: %s.\n", arg3);
+        
         // Check the command formatting.
         // Make sure the command is valid formatting.
         // DISCONNECT
@@ -240,12 +274,12 @@ int main(int argc, char *argv[]){
         }
         // INSERT
         if(strcmp(command, "INSERT") == 0){
-            if(arg2 == NULL){
-                printf("Invaldi command.\n");
+            // Check command argument validation.
+            if(!check_command_insert(arg1, arg2)){
                 continue;
             }
-
-
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
         }
 
         // LINK

@@ -11,7 +11,7 @@ document *markdown_init(void) {
     document* newDoc = (document*)malloc(sizeof(document));
     
     newDoc->version_num = 0;
-    newDoc->doc_len = 1;
+    newDoc->doc_len = 0;
 
     newDoc->first_chunk = (chunk*)malloc(sizeof(chunk));
     newDoc->first_chunk->next_chunk = NULL;

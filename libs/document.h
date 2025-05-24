@@ -30,7 +30,7 @@ typedef struct document{
 
 typedef struct log{
     uint64_t version_num;
-    char** commands;
+    char** edits;
     int command_num;
     struct log* next_log;
 }log;
