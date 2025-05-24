@@ -32,11 +32,11 @@ $(BIN_DIR)/%.o: $(SRC_DIR)/%.c $(HDRS)
 
 # Link server
 server: $(BIN_DIR)/server.o $(BIN_DIR)/document.o $(BIN_DIR)/helper.o $(BIN_DIR)/markdown.o
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o ./bin/server
 
 # Link client
 client: $(BIN_DIR)/client.o $(BIN_DIR)/document.o $(BIN_DIR)/helper.o $(BIN_DIR)/markdown.o
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o ./bin/client
 
 # Clean build artifacts
 clean:
