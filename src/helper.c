@@ -47,7 +47,6 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
             *arg3 = NULL;
         }
         else if(strcmp(*command, "INSERT") == 0){
-            printf("Got a insert.\n");
             token = strtok(NULL, " ");
             *arg1 = token;
             token = strtok(NULL, "\0");
