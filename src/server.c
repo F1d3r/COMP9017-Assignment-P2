@@ -232,7 +232,7 @@ void* server_thread(void* arg){
                     // Unauthorised.
                     sprintf(edit_message+strlen(edit_message), " Reject UNAUTHORISED");
                     pthread_mutex_lock(&log_lock);
-                    add_edit(doc_log, edit_message);
+                    add_edit(&doc_log, edit_message);
                     pthread_mutex_unlock(&log_lock);
                     continue;
                 }
@@ -244,7 +244,7 @@ void* server_thread(void* arg){
                     // Out of boundry.
                     sprintf(edit_message+strlen(edit_message), " Reject INVALID_POSITION");
                     pthread_mutex_lock(&log_lock);
-                    add_edit(doc_log, edit_message);
+                    add_edit(&doc_log, edit_message);
                     pthread_mutex_unlock(&log_lock);
 
                     pthread_mutex_unlock(&doc_lock);
