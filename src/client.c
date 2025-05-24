@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #define BUFF_LEN 1024
+#define CMD_LEN 256
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,11 +10,56 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/select.h>
+#include <pthread.h>
 
 #include "../libs/markdown.h"
 #include "../libs/document.h"
 
 volatile int interupted = 0;
+
+void* broadcast_thread(void* arg){
+    printf("Broadcast listener thread craeted.\n");
+    int read_fd = *(int*)arg;
+    char buff[BUFF_LEN];
+
+    // Using select to monitor the read_fd.
+    fd_set readfds;
+    struct timeval timeout;
+    // Keep listening the broadcast message.
+    while(!interupted){
+        // Set timeout for checking interupted. Prevent blocking.
+        timeout.tv_usec = 500000;
+        timeout.tv_usec = 0;
+        FD_ZERO(&readfds);
+        FD_SET(read_fd, &readfds);
+
+        int ret = select(read_fd+1, &readfds, NULL, NULL, &timeout);
+        if(ret < 0){
+            perror("Select failed.\n");
+            break;
+        }else if(ret == 0){
+            // Timeouot.
+            if(interupted){
+                printf("Thread detected interruption.\n");
+                break;
+            }
+            continue;
+        }else if(FD_ISSET(read_fd, &readfds)){
+            // There is data in the read_fd.
+            // Read and handle the client requests from the pipe.
+            read(read_fd, buff, BUFF_LEN);
+            printf("Got broadcast: %s.\n", buff);
+            
+
+        }
+    }
+
+
+    printf("Broadcast listener terminated.\n");
+    return NULL;
+}
+
 
 void handle_SIGRTMIN(int sig){
     printf("Server responses. Establish connection.\n");
@@ -38,9 +84,11 @@ int main(int argc, char *argv[]){
     char permission[BUFF_LEN];
     char buff[BUFF_LEN];
     bool connecting = false;
-    __uint64_t doc_version = 0;
-    __uint64_t doc_len = 0;
+    
     document* doc = markdown_init();
+    log* doc_log = init_log();
+
+    pthread_t listen_broadcast;
 
     if(argc != 3){
         printf("Please provide the server PID and your username.\n");
@@ -60,23 +108,24 @@ int main(int argc, char *argv[]){
             strcpy(username, argv[2]);
             // username[strlen(argv[2])] = '\0';
             printf("Got username: %s\n", username);
+            printf("Got server pid: %ld\n", server_pid_value);
         }
     }
+    // Get the server and self pid.
+    pid_t server_pid = (pid_t)server_pid_value;
+    pid_t pid = getpid();
 
+    // Register SIG handler.
     // Handle SIGUSER1. The server told client to close.
     signal(SIGUSR1, handle_SIGUSR1);
     // Handle SIGINT.
     signal(SIGINT, handle_SIGINT);
     
+    // Register Runtime Signal handler.
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
     sa.sa_handler = handle_SIGRTMIN;
     sigaction(SIGRTMIN+1, &sa, NULL);
-
-    // Send SIGRTMIN to server.
-    // Sleep for 1 second for response.
-    pid_t server_pid = (pid_t)server_pid_value;
-    pid_t pid = getpid();
     // Send its pid to the server as a signal value.
     union sigval value;
     value.sival_int = pid;
@@ -104,61 +153,120 @@ int main(int argc, char *argv[]){
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
 
-    // Read the permision return.
+    // Read the server response.
     read(read_fd, buff, BUFF_LEN);
-    printf("Got response: %s.\n", buff);
+    printf("Got response:\n%s|END OF MESSAGE\n", buff);
     if(strcmp(buff, "Reject UNAUTHORISED") == 0){
         printf("Your identify is not authorised.\n");
         connecting = false;
     }else{
-        strcpy(permission, buff);
         connecting = true;
     }
 
-    // Read the document version
-    memset(buff, 0, BUFF_LEN);
-    read(read_fd, buff, BUFF_LEN);
-    printf("Read document version: %s.\n", buff);
-    doc_version = strtoul(buff, NULL, 10);
-    printf("Got document version: %ld.\n", doc_version);
+    // Resolve the response.
+    // Get permission.
+    char* token = strtok(buff, "\n");
+    printf("Token: %p\n", token);
+    strcpy(permission, token);
+    printf("Got permission level: %s\n", permission);
+    // Get document version.
+    token = strtok(NULL, "\n");
+    printf("Token: %p\n", token);
+    doc->version_num = strtol(token, NULL, 10);
+    printf("Got document version: %ld\n", doc->version_num);
+    // Get document length.
+    token = strtok(NULL, "\n");
+    printf("Token: %p\n", token);
+    doc->doc_len = strtol(token, NULL, 10);
+    printf("Got document length: %ld\n", doc->doc_len);
+    // Get document content.
+    token = strtok(NULL, "\n");
+    if(token != NULL){
+        strcpy(doc->first_chunk->content, token);
+        printf("Got document content: %s\n", doc->first_chunk->content);
+    }else{
+        printf("Content is empty: %s\n", doc->first_chunk->content);
+    }
 
-    // Read the document length
-    memset(buff, 0, BUFF_LEN);
-    read(read_fd, buff, BUFF_LEN);
-    printf("Read document length: %s.\n", buff);
-    doc_len = strtoul(buff, NULL, 10);
-    printf("Got document length: %ld.\n", doc_len);
-    
-    // Read the document content
-    memset(buff, 0, BUFF_LEN);
-    read(read_fd, buff, BUFF_LEN);
-    printf("Read document content: %s.\n", buff);
-    doc->first_chunk->content = realloc(doc->first_chunk->content,
-        sizeof(char)*(strlen(buff)+1));
-    strcpy(doc->first_chunk->content, buff);
-    printf("Got document content: %s.\n", doc->first_chunk->content);
+
+    // Create a thread to receive the server braodcast and update doc.
+    int result = pthread_create(&listen_broadcast, NULL, broadcast_thread, &read_fd);
+    if(result != 0){
+        perror("Thread create failed.\n");
+        interupted = true;
+    }else{
+        printf("Start listening command input.\n");
+    }
+
 
     // When the client is not interupted.
+    // Keeps listening from the user input for commands.
     while(!interupted && connecting){
-        scanf("%s", buff);
-        printf("Got a command: %s.\n", buff);
-        if(strcmp(buff, "DISCONNECT") == 0){
-            // Write the disconnect into pipe.
-            printf("Writing to pipe.\n");
-            write(write_fd, buff, strlen(buff));
-            connecting = false;
-        }else{
-            printf("Invalid command.\n");
+        char command_input[CMD_LEN];
+        fgets(command_input, sizeof(command_input), stdin);
+        printf("Got a input: %s.\n", command_input);
+
+        // Resolve the command.
+        char* token = strtok(command_input, " ");
+        char* command = token;
+        printf("Got command: %s.\n", command);
+        token = strtok(NULL, " ");
+        char* arg1 = token;
+        printf("Got argument1: %s.\n", arg1);
+        token = strtok(NULL, " ");
+        char* arg2 = token;
+        printf("Got argument2: %s.\n", arg2);
+        token = strtok(NULL, " ");
+        char* arg3 = token;
+        printf("Got argument3: %s.\n", arg3);
+        // Check the command formatting.
+        // Make sure the command is valid formatting.
+        // DISCONNECT
+        if(strcmp(command, "DISCONNECT\n")==0){
+            interupted = true;
+            continue;
         }
+        // DOC
+        if(strcmp(command, "DOC?\n") == 0){
+            markdown_print(doc, stdout);
+        }
+        // PERM
+        if(strcmp(command, "PERM?\n") == 0){
+            printf("%s\n", permission);
+        }
+        // LOG
+        if(strcmp(command, "LOG?\n") == 0){
+            print_log(doc_log);
+        }
+        // INSERT
+        if(strcmp(command, "INSERT") == 0){
+            if(arg2 == NULL){
+                printf("Invaldi command.\n");
+                continue;
+            }
+
+
+        }
+
+        // LINK
+        if(strcmp(command, "LINK") == 0){
+            if(arg3 == NULL){
+                printf("Invaldi command.\n");
+                continue;
+            }
+
+        }
+
     }
 
     
-    // Tell the server.
+    // Tell the server if interupted.
     if(interupted){
-        write(write_fd, "DISCONNECT", strlen("DISCONNECT"));
+        write(write_fd, "DISCONNECT\n", strlen("DISCONNECT\n"));
     }
 
     markdown_free(doc);
+    log_free(doc_log);
     close(read_fd);
     close(write_fd);
     unlink(fifo_name1);

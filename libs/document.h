@@ -28,5 +28,18 @@ typedef struct document{
     
 } document;
 
+typedef struct log{
+    uint64_t version_num;
+    char** commands;
+    int command_num;
+    struct log* next_log;
+}log;
+
+
+void print_log(log* doc_log);
+
+log* init_log();
+
+void log_free(log* doc_log);
 // Functions from here onwards.
 #endif

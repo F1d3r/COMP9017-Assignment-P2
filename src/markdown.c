@@ -16,9 +16,9 @@ document *markdown_init(void) {
     newDoc->first_chunk = (chunk*)malloc(sizeof(chunk));
     newDoc->first_chunk->next_chunk = NULL;
     newDoc->first_chunk->offset = 0;
-    newDoc->first_chunk->length = 1;
-    newDoc->first_chunk->content = (char*)malloc(sizeof(char)*2);
-    newDoc->first_chunk->content[0] = '\n';
+    newDoc->first_chunk->length = 0;
+    newDoc->first_chunk->content = (char*)malloc(sizeof(char)*1);
+    // newDoc->first_chunk->content[0] = '\n';
     newDoc->first_chunk->content[0] = '\0';
     // newDoc->first_chunk->content[strlen(newDoc->first_chunk->content)] = '\0';
 
@@ -105,7 +105,6 @@ int markdown_link(document *doc, uint64_t version, size_t start, size_t end, con
 void markdown_print(const document *doc, FILE *stream) {
     char* doc_content = markdown_flatten(doc);
     if (doc_content != NULL) {
-        printf("Printing the document content.\n");
         fprintf(stream, "%s", doc_content);
         fflush(stream);
     }
@@ -127,6 +126,6 @@ char *markdown_flatten(const document *doc) {
 
 // === Versioning ===
 void markdown_increment_version(document *doc) {
-    (void)doc;
+    doc->version_num++;
 }
 

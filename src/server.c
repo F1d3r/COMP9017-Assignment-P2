@@ -12,6 +12,8 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
+#include <semaphore.h>
 
 #include "../libs/document.h"
 #include "../libs/markdown.h"
@@ -25,12 +27,19 @@ typedef struct{
 
 // Global variables. Shared in all threads.
 volatile int interupted = 0;
-pthread_t threads[MAX_CLIENTS];
-User** users;
-document* doc;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int total_user = 0;
 int clinet_count = 0;
+
+User** users;
+document* doc;
+log* doc_log;
+pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_t threads[MAX_CLIENTS];
+
+sem_t semaphore;
+
 
 
 // The thread to handle client request.
@@ -90,34 +99,26 @@ void* server_thread(void* arg){
             strcpy(permission, users[i]->permission_level);
             permission[strlen(permission)] = '\n';
             permission[strlen(permission)] = '\0';
-            // Write permission.
-            write(write_fd, permission, strlen(permission));
-            printf("Permission written into pipe: %s.\n", permission);
 
             // Write document details to the pipe.
-            pthread_mutex_lock(&mutex);
+            pthread_mutex_lock(&doc_lock);
             // Check document.
             char* doc_content = markdown_flatten(doc);
-            printf("Doc version: %ld.\n", doc->version_num);
-            printf("Doc len: %ld.\n", doc->doc_len);
-            printf("Doc content: %s.\n", doc_content);
+            printf("Doc version: %ld\n", doc->version_num);
+            printf("Doc len: %ld\n", doc->doc_len);
+            printf("Doc content: %s\n", doc_content);
 
             // Write version number.
-            snprintf(buff, sizeof(buff), "%lu\n", doc->version_num);
-            printf("Doc version written into pipe: %s.\n", buff);
+            snprintf(buff, sizeof(buff), "%s", permission);
+            snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);
+            snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->doc_len);
+            snprintf(buff+strlen(buff), sizeof(buff), "%s", doc_content);
+            printf("Message payload:%s |aaaaa.", buff);
+            printf("|||");
             write(write_fd, buff, strlen(buff));
-            sleep(1);
-            // Write document length.
-            snprintf(buff, sizeof(buff), "%lu\n", doc->doc_len);
-            printf("Doc length written into pipe: %s.\n", buff);
-            write(write_fd, buff, strlen(buff));
-            sleep(1);
-            // Write document content.
-            printf("Document content written into pipe.\n");
-            write(write_fd, doc_content, doc->doc_len);
-            free(doc_content);
 
-            pthread_mutex_unlock(&mutex); 
+            free(doc_content);
+            pthread_mutex_unlock(&doc_lock);
             break;
         }
     }
@@ -157,9 +158,21 @@ void* server_thread(void* arg){
             // Read and handle the client requests from the pipe.
             read(read_fd, command, BUFF_LEN);
             printf("Got command: %s from client: %d.\n", command, client_pid);
-
+            // Resolve the command.
+            char* token = strtok(command, " ");
+            char* com = token;
+            printf("Got command: %s.\n", com);
+            token = strtok(NULL, " ");
+            char* arg1 = token;
+            printf("Got argument1: %s.\n", arg1);
+            token = strtok(NULL, " ");
+            char* arg2 = token;
+            printf("Got argument2: %s.\n", arg2);
+            token = strtok(NULL, " ");
+            char* arg3 = token;
+            printf("Got argument3: %s.\n", arg3);
             // If the command is disconnect.
-            if(strcmp(command, "DISCONNECT") == 0){
+            if(strcmp(command, "DISCONNECT\n") == 0){
                 break;
             }
         }
@@ -244,6 +257,7 @@ void destroy_users(User** users, int total_user){
 int main(int argc, char *argv[]){
     // Initialize the document.
     doc = markdown_init();
+    doc_log = init_log();
     markdown_print(doc, stdout);
 
     // Server PID.  
@@ -306,9 +320,19 @@ int main(int argc, char *argv[]){
     // sigaddset(&mask, SIGRTMIN);
     char input_buff[BUFF_LEN];
     while (!interupted) {
-        scanf("%s", input_buff);
-        if(strcmp(input_buff, "QUIT") == 0){
+        fgets(input_buff, sizeof(input_buff), stdin);
+        if(strcmp(input_buff, "QUIT\n") == 0){
             handle_SIGINT(SIGINT);
+        }else if(strcmp(input_buff, "DOC?\n") == 0){
+            pthread_mutex_lock(&doc_lock);
+            markdown_print(doc, stdout);
+            pthread_mutex_unlock(&doc_lock);
+        }else if(strcmp(input_buff, "LOG?\n") == 0){
+            pthread_mutex_lock(&log_lock);
+            print_log(doc_log);
+            pthread_mutex_unlock(&log_lock);
+        }else{
+            printf("Invalid command.\n");
         }
     }
 
@@ -324,6 +348,7 @@ int main(int argc, char *argv[]){
     // Free the users.
     destroy_users(users, total_user);
     markdown_free(doc);
+    log_free(doc_log);
 
     return 0;
 }
