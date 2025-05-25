@@ -76,7 +76,7 @@ void* broadcast_thread_func(void* arg){
             // Update doc.
             int num_edit_processed = update_doc(doc, doc_log);
             if(num_edit_processed != 0){
-                markdown_increment_version(&doc);
+                markdown_increment_version(doc);
                 new_log->version_num ++;
             }
         }

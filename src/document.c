@@ -243,3 +243,37 @@ void log_free(log* doc_log){
         free(temp);
     }
 }
+
+
+chunk* copy_chunk_list(chunk* chunk_head){
+    chunk* new_chunk_list = (chunk*)malloc(sizeof(chunk));
+    memcpy(new_chunk_list, chunk_head, sizeof(chunk));
+    new_chunk_list->content = (char*)malloc(sizeof(char)*(strlen(chunk_head->content)+1));
+    strcpy(new_chunk_list->content, chunk_head->content);
+
+    chunk* temp = new_chunk_list;
+    chunk* current_chunk = chunk_head->next_chunk;
+    while(current_chunk != NULL){
+        chunk* new_chunk = (chunk*)malloc(sizeof(chunk));
+        memcpy(new_chunk, current_chunk, sizeof(chunk));
+        new_chunk->content = (char*)malloc(sizeof(char)*(strlen(current_chunk->content)+1));
+        strcpy(new_chunk->content, current_chunk->content);
+        temp->next_chunk = new_chunk;
+
+        current_chunk = current_chunk->next_chunk;
+        temp = new_chunk;
+    }
+
+    return new_chunk_list;
+}
+
+void free_chunk_list(chunk* chunk_head){
+    chunk* current = chunk_head;
+    while(current != NULL){
+        chunk* temp = current;
+        current = current->next_chunk;
+
+        free(temp->content);
+        free(temp);
+    }
+}

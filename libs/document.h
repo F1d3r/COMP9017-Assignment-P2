@@ -58,6 +58,11 @@ log* init_log();
 log* get_log(char* message);
 
 void log_free(log* doc_log);
+
+chunk* copy_chunk_list(chunk* chunk_head);
+
+void free_chunk_list(chunk* chunk_head);
+
 // Functions from here onwards.
 
 #endif

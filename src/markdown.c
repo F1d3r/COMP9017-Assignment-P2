@@ -26,6 +26,7 @@ document *markdown_init(void) {
     // Next version.
     newDoc->next_version = (document*)malloc(sizeof(document));
     memcpy(newDoc->next_version, newDoc, sizeof(document));
+    newDoc->next_version->first_chunk = copy_chunk_list(newDoc->first_chunk);
 
     // newDoc->next_version = (document*)malloc(sizeof(document));
     // newDoc->next_version->version_num = 0;
@@ -42,14 +43,8 @@ document *markdown_init(void) {
 }
 
 void markdown_free(document *doc) {
-    chunk* current_chunk = doc->first_chunk;
-    while(current_chunk != NULL){
-        chunk* temp = current_chunk->next_chunk;
-        free(current_chunk->content);
-        free(current_chunk);
-        current_chunk = temp;
-    }
-
+    free_chunk_list(doc->first_chunk);
+    free_chunk_list(doc->next_version->first_chunk);
     free(doc->next_version);
     free(doc);
     return;
@@ -187,17 +182,12 @@ char *markdown_flatten(const document *doc) {
 }
 
 // === Versioning ===
-void markdown_increment_version(document** doc) {
-    // Create a new next version doc.
-    document* newDoc = (document*)malloc(sizeof(document));
-    memcpy(newDoc, (*doc)->next_version, sizeof(document));
+void markdown_increment_version(document* doc) {
+    chunk* temp = doc->first_chunk;
+    memcpy(doc, doc->next_version, sizeof(document));
+    doc->next_version->first_chunk = copy_chunk_list(doc->first_chunk);
 
-    // Remove the old one.
-    document* temp = *doc;
-    (*doc) = (*doc)->next_version;
-    free(temp);
+    free_chunk_list(temp);
 
-    // Set the next version doc.
-    (*doc)->next_version = newDoc;
 }
 

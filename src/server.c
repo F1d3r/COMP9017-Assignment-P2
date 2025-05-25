@@ -235,6 +235,50 @@ void* thread_for_client(void* arg){
                 add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
                 pthread_mutex_unlock(&log_lock);
             }
+            else if(strcmp(command, "DEL") == 0){
+                // Remove the last '\n';
+                command_input[strlen(command_input)-1] = '\0';
+
+                // Check permission.
+                if(strcmp(permission, "write\n") != 0){
+                    // Unauthorised.
+                    pthread_mutex_lock(&log_lock);
+                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("No permission.\n");
+                    continue;
+                }
+
+                // Check position
+                uint64_t pos = strtol(arg1, NULL, 10);
+                uint64_t len = strtol(arg2, NULL, 10);
+                pthread_mutex_lock(&log_lock);
+                log* last_log = doc_log;
+                while(last_log->next_log != NULL){
+                    last_log = last_log->next_log;
+                }
+                if(pos > doc->doc_len){
+                    // Out of boundry.
+                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("Invalid position.\n");
+                    continue;
+                }
+                if(pos+len > doc->doc_len){
+                    // Out of boundry.
+                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("Invalid position.\n");
+                    continue;
+                }
+                pthread_mutex_unlock(&log_lock);
+                printf("The command is valid!\n");
+
+                // Then write the command into log.
+                pthread_mutex_lock(&log_lock);
+                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&log_lock);
+            }
         }
         
     }
@@ -319,7 +363,7 @@ void* broadcast_thread_func(void* arg) {
         // If there is at least one success, increase the version number.
         if(num_edit_processed != 0){
             new_log->version_num = last_log->version_num+1;
-            markdown_increment_version(&doc);
+            markdown_increment_version(doc);
         }else{
             new_log->version_num = last_log->version_num;
         }
