@@ -226,17 +226,14 @@ void* server_thread(void* arg){
                 connecting = false;
                 break;
             }else if(strcmp(command, "INSERT") == 0){
-                char edit_message[BUFF_LEN];
                 // Remove the last '\n';
                 command_input[strlen(command_input)-1] = '\0';
-                sprintf(edit_message, "%s", command_input);
 
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    sprintf(edit_message+strlen(edit_message), " Reject UNAUTHORISED");
                     pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, edit_message);
+                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
                     pthread_mutex_unlock(&log_lock);
                     printf("No permission.\n");
                     continue;
@@ -251,8 +248,7 @@ void* server_thread(void* arg){
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    sprintf(edit_message+strlen(edit_message), " Reject INVALID_POSITION");
-                    add_edit(&doc_log, edit_message);
+                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
                     pthread_mutex_unlock(&log_lock);
                     printf("Invalid position.\n");
                     continue;
@@ -260,17 +256,9 @@ void* server_thread(void* arg){
                 pthread_mutex_unlock(&log_lock);
                 printf("The command is valid!\n");
 
-
-                // Now the argument is valid, insert to the document.
-                pthread_mutex_lock(&doc_lock);
-                markdown_insert(doc, doc->version_num, pos, arg2);
-                markdown_print(doc, stdout);
-                pthread_mutex_unlock(&doc_lock);
-
                 // Then write the command into log.
-                sprintf(edit_message+strlen(edit_message), " SUCCESS");
                 pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, edit_message);
+                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
                 pthread_mutex_unlock(&log_lock);
             }
         }
@@ -375,9 +363,11 @@ void broadcast_to_all_clients(const char* message) {
 
 
 void* broadcast_thread_func(void* arg) {
+    printf("Broadcast thread created.\n");
     while(!interupted) {
         // Set a timer.
         sleep((int)server_time_interval);
+        printf("Broadcasting...\n");
         
         // Check server status.
         if(interupted) break;
@@ -391,18 +381,45 @@ void* broadcast_thread_func(void* arg) {
         while(last_log->next_log != NULL){
             last_log = last_log->next_log;
         }
-        new_log->version_num = last_log->version_num+1;
+
+        // Check all commands in previous time interval.
+        // If there is at least one success, increase the version number.
+        bool file_updated = false;
+        for(int i = 0; i < last_log->edits_num; i++){
+            if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+                file_updated = true;
+                break;
+            }
+        }
+        if(file_updated){
+            new_log->version_num = last_log->version_num+1;
+        }else{
+            new_log->version_num = last_log->version_num;
+        }
         // Record version length.
         pthread_mutex_lock(&doc_lock);
         last_log->current_ver_len = doc->doc_len;
+        // Update local documents according to the success log edits.
+        for(int i = 0; i < last_log->edits_num; i ++){
+
+        }
         pthread_mutex_unlock(&doc_lock);
         // Add the new log into the log list.
         add_log(&doc_log, new_log);
+        pthread_mutex_unlock(&log_lock);
 
         // Prepare the message.
         sprintf(broadcast_message, "Version %ld\n", last_log->version_num);
         for(int i = 0; i < last_log->edits_num; i++){
-            sprintf(broadcast_message+strlen(broadcast_message), "Edit %s\n", last_log->edits[i]);
+            sprintf(broadcast_message+strlen(broadcast_message), "Edit %s %s %s", 
+            last_log->edits[i]->user, last_log->edits[i]->command, last_log->edits[i]->result);
+
+            if(last_log->edits[i]->reject_reason != NULL){
+                sprintf(broadcast_message+strlen(broadcast_message), " %s\n", 
+                last_log->edits[i]->reject_reason);
+            }else{
+                sprintf(broadcast_message+strlen(broadcast_message), " \n");
+            }
         }
         sprintf(broadcast_message+strlen(broadcast_message), "END\n");
         printf("Payload:\n%s", broadcast_message);
@@ -412,6 +429,8 @@ void* broadcast_thread_func(void* arg) {
         // Broadcast to clients.
         broadcast_to_all_clients(broadcast_message);
         printf("Broadcasted log to all clients\n");
+
+
     }
     return NULL;
 }
@@ -435,11 +454,11 @@ int main(int argc, char *argv[]){
 
     // Get the server time interval.
     server_time_interval = strtod(argv[1], NULL);
-    printf("Got the time interval: %f.\n", server_time_interval);
+    // printf("Got the time interval: %f.\n", server_time_interval);
 
 
     // Setup the valid users.
-    FILE* roles = fopen("../roles.txt", "r");
+    FILE* roles = fopen("./roles.txt", "r");
     if(!roles){
         perror("Failed to open role file.\n");
         return 1;
@@ -448,8 +467,8 @@ int main(int argc, char *argv[]){
     char username_buff[BUFF_LEN];
     char permission_buff[BUFF_LEN];
     while(fscanf(roles, "%s %s", username_buff, permission_buff) == 2){
-        printf("Valid username: %s.\n", username_buff);
-        printf("Permission level: %s.\n", permission_buff);
+        // printf("Valid username: %s.\n", username_buff);
+        // printf("Permission level: %s.\n", permission_buff);
         // Create a new user.
         User* newUser = malloc(sizeof(User));
         newUser->username = malloc(sizeof(char)*(strlen(username_buff)+1));

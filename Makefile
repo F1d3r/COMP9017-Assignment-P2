@@ -1,6 +1,7 @@
 # Compiler settings
 CC := gcc
-CFLAGS := -Wall -fsanitize=address
+CFLAGS := -Wall -fsanitize=address -g
+LINKS := -lpthread
 
 # Executables
 TARGETS := server client
@@ -9,10 +10,10 @@ TARGETS := server client
 all: $(TARGETS)
 
 server: server.o markdown.o document.o helper.o
-	$(CC) $(CFLAGS) -o server server.o markdown.o document.o helper.o
+	$(CC) $(CFLAGS) -o server server.o markdown.o document.o helper.o $(LINKS)
 	
 client: client.o markdown.o document.o helper.o
-	$(CC) $(CFLAGS) -o client client.o markdown.o document.o helper.o
+	$(CC) $(CFLAGS) -o client client.o markdown.o document.o helper.o $(LINKS)
 
 server.o: src/server.c
 	$(CC) $(CFLAGS) -c src/server.c -o server.o

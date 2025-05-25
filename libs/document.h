@@ -28,10 +28,18 @@ typedef struct document{
     
 } document;
 
+typedef struct edit{
+    char* user;
+    char* command;
+    char* result;
+    char* reject_reason;
+} edit;
+
+
 typedef struct log{
     uint64_t version_num;
     uint64_t current_ver_len;
-    char** edits;
+    edit** edits;
     int edits_num;
     struct log* next_log;
 }log;
@@ -41,7 +49,7 @@ void print_log(log* doc_log);
 
 void add_log(log** doc_log, log* new_log);
 
-void add_edit(log** log_head, char* edit_content);
+void add_edit(log** log_head, char* user, char* command, char* result, char* reject_reason);
 
 log* init_log();
 
