@@ -5,11 +5,13 @@
 #include "../libs/markdown.h"
 
 #define SUCCESS 0 
+#define INVALID_CURSOR_POS -1
+#define DELETED_POSITION -2
+#define OUTDATED_VERSION -3
 
 // === Init and Free ===
 document *markdown_init(void) {
     document* newDoc = (document*)malloc(sizeof(document));
-    
     newDoc->version_num = 0;
     newDoc->doc_len = 0;
 
@@ -17,10 +19,10 @@ document *markdown_init(void) {
     newDoc->first_chunk->next_chunk = NULL;
     newDoc->first_chunk->offset = 0;
     newDoc->first_chunk->length = 0;
-    newDoc->first_chunk->content = (char*)malloc(sizeof(char)*1);
-    // newDoc->first_chunk->content[0] = '\n';
-    newDoc->first_chunk->content[0] = '\0';
-    // newDoc->first_chunk->content[strlen(newDoc->first_chunk->content)] = '\0';
+    newDoc->first_chunk->content = (char*)malloc(sizeof(char)*(newDoc->first_chunk->length+1));
+
+    // strcpy(newDoc->first_chunk->content, "1234");
+    newDoc->first_chunk->content[newDoc->first_chunk->length] = '\0';
 
     return newDoc;
 }
@@ -39,8 +41,23 @@ void markdown_free(document *doc) {
 }
 
 // === Edit Commands ===
-int markdown_insert(document *doc, uint64_t version, size_t pos, const char *content) {
-    (void)doc; (void)version; (void)pos; (void)content;
+int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) {
+    if(pos > doc->doc_len){
+        return INVALID_CURSOR_POS;
+    }
+    
+    char* new_content = (char*)malloc(sizeof(char)*(doc->first_chunk->length+strlen(content)+1)); 
+    memcpy(new_content, doc->first_chunk->content, pos);
+    memcpy(new_content+pos, content, strlen(content));
+    memcpy(new_content+pos+strlen(content), doc->first_chunk->content+pos, doc->first_chunk->length-pos);
+    free(doc->first_chunk->content);
+    new_content[doc->first_chunk->length+strlen(content)] = '\0';
+
+    doc->first_chunk->content = new_content;
+    doc->first_chunk->length += strlen(content);
+    doc->doc_len += strlen(content);
+
+
     return SUCCESS;
 }
 
@@ -112,15 +129,18 @@ void markdown_print(const document *doc, FILE *stream) {
 }
 
 char *markdown_flatten(const document *doc) {
-    char* flatten_content = malloc(sizeof(char)*doc->doc_len);
-    flatten_content[0] = '\0';
+    char* flatten_content = (char*)malloc(sizeof(char));
     chunk* current_chunk = doc->first_chunk;
+    int size = 0;
     while(current_chunk != NULL){
-
-        strncpy(flatten_content+current_chunk->offset, 
-            current_chunk->content, current_chunk->length);
+        size += current_chunk->length;
+        flatten_content = realloc(flatten_content, sizeof(char)*(size+1));
+        // Problem here.
+        memcpy(flatten_content+current_chunk->offset, 
+            current_chunk->content, sizeof(char)*current_chunk->length);
         current_chunk = current_chunk->next_chunk;
     }
+    flatten_content[doc->doc_len] = '\0';
     return flatten_content;
 }
 

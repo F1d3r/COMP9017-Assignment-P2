@@ -145,20 +145,20 @@ void* server_thread(void* arg){
             // Write document details to the pipe.
             pthread_mutex_lock(&doc_lock);
             // Check document.
-            char* doc_content = markdown_flatten(doc);
+            // char* doc_content = markdown_flatten(doc);
             printf("Doc version: %ld\n", doc->version_num);
             printf("Doc len: %ld\n", doc->doc_len);
-            printf("Doc content: %s\n", doc_content);
+            printf("Doc content: %s\n", doc->first_chunk->content);
 
             // Write version number.
             snprintf(buff, sizeof(buff), "%s", permission);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->doc_len);
-            snprintf(buff+strlen(buff), sizeof(buff), "%s", doc_content);
+            snprintf(buff+strlen(buff), sizeof(buff), "%s", doc->first_chunk->content);
             printf("Message payload:\n%s", buff);
             write(write_fd, buff, strlen(buff));
 
-            free(doc_content);
+            // free(doc_content);
             pthread_mutex_unlock(&doc_lock);
             break;
         }
@@ -211,12 +211,15 @@ void* server_thread(void* arg){
             memset(command_input, 0, CMD_LEN);
             read(read_fd, command_input, CMD_LEN);
             printf("Got command: %s from client: %d.\n", command_input, client_pid);
+            char temp[CMD_LEN];
+            strcpy(temp, command_input);
+
             // Resolve the command.
             char* command;
             char* arg1;
             char* arg2;
             char* arg3;
-            resolve_command(command_input, &command, &arg1, &arg2, &arg3);
+            resolve_command(temp, &command, &arg1, &arg2, &arg3);
 
             // If the command is disconnect.
             if(strcmp(command, "DISCONNECT\n") == 0){
@@ -227,33 +230,48 @@ void* server_thread(void* arg){
                 // Remove the last '\n';
                 command_input[strlen(command_input)-1] = '\0';
                 sprintf(edit_message, "%s", command_input);
+
                 // Check permission.
-                if(strcmp(permission, "write") != 0){
+                if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
                     sprintf(edit_message+strlen(edit_message), " Reject UNAUTHORISED");
                     pthread_mutex_lock(&log_lock);
                     add_edit(&doc_log, edit_message);
                     pthread_mutex_unlock(&log_lock);
+                    printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&doc_lock);
+                pthread_mutex_lock(&log_lock);
+                log* last_log = doc_log;
+                while(last_log->next_log != NULL){
+                    last_log = last_log->next_log;
+                }
                 if(pos > doc->doc_len){
                     // Out of boundry.
                     sprintf(edit_message+strlen(edit_message), " Reject INVALID_POSITION");
-                    pthread_mutex_lock(&log_lock);
                     add_edit(&doc_log, edit_message);
                     pthread_mutex_unlock(&log_lock);
-
-                    pthread_mutex_unlock(&doc_lock);
+                    printf("Invalid position.\n");
                     continue;
                 }
+                pthread_mutex_unlock(&log_lock);
+                printf("The command is valid!\n");
 
 
-                // insert_doc(doc, pos, arg2);
+                // Now the argument is valid, insert to the document.
+                pthread_mutex_lock(&doc_lock);
+                markdown_insert(doc, doc->version_num, pos, arg2);
+                markdown_print(doc, stdout);
                 pthread_mutex_unlock(&doc_lock);
+
+                // Then write the command into log.
+                sprintf(edit_message+strlen(edit_message), " SUCCESS");
+                pthread_mutex_lock(&log_lock);
+                add_edit(&doc_log, edit_message);
+                pthread_mutex_unlock(&log_lock);
             }
         }
         
@@ -356,7 +374,7 @@ void broadcast_to_all_clients(const char* message) {
 }
 
 
-void* broadcast(void* arg) {
+void* broadcast_thread_func(void* arg) {
     while(!interupted) {
         // Set a timer.
         sleep((int)server_time_interval);
@@ -367,10 +385,24 @@ void* broadcast(void* arg) {
         // Build the message to broadcast.
         char broadcast_message[BUFF_LEN];
         pthread_mutex_lock(&log_lock);
+        // Made a new log.
+        log* new_log = init_log();
+        log* last_log = doc_log;
+        while(last_log->next_log != NULL){
+            last_log = last_log->next_log;
+        }
+        new_log->version_num = last_log->version_num+1;
+        // Record version length.
+        pthread_mutex_lock(&doc_lock);
+        last_log->current_ver_len = doc->doc_len;
+        pthread_mutex_unlock(&doc_lock);
+        // Add the new log into the log list.
+        add_log(&doc_log, new_log);
 
-        sprintf(broadcast_message, "Version %ld\n", doc_log->version_num);
-        for(int i = 0; i < doc_log->edits_num; i++){
-            sprintf(broadcast_message+strlen(broadcast_message), "Edit %s\n", doc_log->edits[i]);
+        // Prepare the message.
+        sprintf(broadcast_message, "Version %ld\n", last_log->version_num);
+        for(int i = 0; i < last_log->edits_num; i++){
+            sprintf(broadcast_message+strlen(broadcast_message), "Edit %s\n", last_log->edits[i]);
         }
         sprintf(broadcast_message+strlen(broadcast_message), "END\n");
         printf("Payload:\n%s", broadcast_message);
@@ -432,7 +464,7 @@ int main(int argc, char *argv[]){
     }
 
     // Create thread for broadcasting.
-    if(pthread_create(&broadcast_thread, NULL, broadcast, NULL) != 0) {
+    if(pthread_create(&broadcast_thread, NULL, broadcast_thread_func, NULL) != 0) {
         perror("Failed to create timer thread");
         return 1;
     }

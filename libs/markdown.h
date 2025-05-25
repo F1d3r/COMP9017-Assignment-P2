@@ -19,7 +19,7 @@ document * markdown_init(void);
 void markdown_free(document *doc);
 
 // === Edit Commands ===
-int markdown_insert(document *doc, uint64_t version, size_t pos, const char *content);
+int markdown_insert(document *doc, uint64_t version, size_t pos, char *content);
 int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len);
 
 // === Formatting Commands ===

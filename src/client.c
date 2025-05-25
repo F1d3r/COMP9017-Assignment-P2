@@ -26,7 +26,7 @@ pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
-void* broadcast(void* arg){
+void* broadcast_thread_func(void* arg){
     printf("Broadcast listener thread craeted.\n");
     int read_fd = *(int*)arg;
     char buff[BUFF_LEN];
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]){
 
 
     // Create a thread to receive the server braodcast and update doc.
-    int result = pthread_create(&listen_broadcast, NULL, broadcast, &read_fd);
+    int result = pthread_create(&listen_broadcast, NULL, broadcast_thread_func, &read_fd);
     if(result != 0){
         perror("Thread create failed.\n");
         interupted = true;
