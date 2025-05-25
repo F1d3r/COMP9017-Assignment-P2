@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "document.h"  
+#include "document.h"
 /**
  * The given file contains all the functions you will be required to complete. You are free to and encouraged to create
  * more helper functions to help assist you when creating the document. For the automated marking you can expect unit tests
@@ -19,7 +19,7 @@ document * markdown_init(void);
 void markdown_free(document *doc);
 
 // === Edit Commands ===
-int markdown_insert(document *doc, uint64_t version, size_t pos, char *content);
+int markdown_insert(document *doc, uint64_t version, size_t pos, const char *content);
 int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len);
 
 // === Formatting Commands ===

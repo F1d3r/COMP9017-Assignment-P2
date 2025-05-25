@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../libs/markdown.h"
+#include "../libs/document.h"
 
 #define SUCCESS 0 
 #define INVALID_CURSOR_POS -1
@@ -51,7 +52,7 @@ void markdown_free(document *doc) {
 }
 
 // === Edit Commands ===
-int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) {
+int markdown_insert(document *doc, uint64_t version, size_t pos, const char *content) {
     if(version != doc->version_num){
         printf("Version outdated: %ld|%ld\n", version, doc->version_num);
         return OUTDATED_VERSION;
