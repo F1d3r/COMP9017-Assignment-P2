@@ -64,6 +64,9 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, const char *con
     doc->next_version->doc_len += strlen(content);
 
     doc->next_version->version_num = doc->version_num+1;
+
+    printf("Doc now:\n");
+    markdown_print(doc, stdout);
     return SUCCESS;
 }
 

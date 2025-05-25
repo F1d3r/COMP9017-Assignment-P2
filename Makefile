@@ -10,8 +10,11 @@ server: src/server.c src/document.c src/helper.c src/markdown.c src/user.c
 client: src/client.c src/document.c src/helper.c src/markdown.c src/user.c
 	$(CC) $(CFLAGS) -o client src/client.c src/document.c src/helper.c src/markdown.c src/user.c
 
-markdown.o: src/markdown.c src/document.c
-	$(CC) $(CFLAGS) -c src/markdown.c src/document.c
+markdown.o: src/markdown.c src/document.c src/helper.c src/user.c
+	$(CC) $(CFLAGS) -c src/markdown.c -o markdown.o
+	$(CC) $(CFLAGS) -c src/document.c -o document.o
+	$(CC) $(CFLAGS) -c src/helper.c -o helper.o
+	$(CC) $(CFLAGS) -c src/user.c -o user.o
 
 clean:
 	find . -type p -name "FIFO_*" -exec unlink {} \;
