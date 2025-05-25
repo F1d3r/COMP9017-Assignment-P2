@@ -401,7 +401,21 @@ void* broadcast_thread_func(void* arg) {
         last_log->current_ver_len = doc->doc_len;
         // Update local documents according to the success log edits.
         for(int i = 0; i < last_log->edits_num; i ++){
+            // Only process success commands.
+            if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+                char command_input[CMD_LEN];
+                strcpy(command_input, last_log->edits[i]->command);
+                char* command = NULL;
+                char* arg1 = NULL;
+                char* arg2 = NULL;
+                char* arg3 = NULL;
+                resolve_command(command_input, &command, &arg1, &arg2, &arg3);
 
+                if(strcmp(command, "INSERT") == 0){
+                    size_t pos = strtol(arg1, NULL, 10);
+                    markdown_insert(doc, last_log->version_num, pos, arg2);
+                }
+            }
         }
         pthread_mutex_unlock(&doc_lock);
         // Add the new log into the log list.
