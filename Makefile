@@ -6,7 +6,11 @@ CFLAGS := -Wall -fsanitize=address
 TARGETS := server client
 
 # Default target
-all: $(TARGETS)
+all: | bin $(TARGETS)
+
+# Create bin/ directory if it doesn't exist
+bin:
+	mkdir -p bin
 
 server: server.o markdown.o document.o helper.o
 	$(CC) $(CFLAGS) -o bin/server bin/server.o bin/markdown.o bin/document.o bin/helper.o
