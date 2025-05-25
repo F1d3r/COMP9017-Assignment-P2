@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "../libs/markdown.h"
-#include "../libs/document.h"
 
 #define SUCCESS 0 
 #define INVALID_CURSOR_POS -1
@@ -28,17 +27,6 @@ document *markdown_init(void) {
     newDoc->next_version = (document*)malloc(sizeof(document));
     memcpy(newDoc->next_version, newDoc, sizeof(document));
     newDoc->next_version->first_chunk = copy_chunk_list(newDoc->first_chunk);
-
-    // newDoc->next_version = (document*)malloc(sizeof(document));
-    // newDoc->next_version->version_num = 0;
-    // newDoc->next_version->doc_len = 0;
-    // newDoc->next_version->first_chunk = (chunk*)malloc(sizeof(chunk));
-    // newDoc->next_version->first_chunk->next_chunk = NULL;
-    // newDoc->next_version->first_chunk->offset = 0;
-    // newDoc->next_version->first_chunk->length = 0;
-    // newDoc->next_version->first_chunk->content = (char*)malloc(sizeof(char)*(newDoc->first_chunk->length+1));
-    // newDoc->next_version->first_chunk->content[newDoc->first_chunk->length] = '\0';
-    // newDoc->next_version->next_version = NULL;
 
     return newDoc;
 }
