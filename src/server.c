@@ -14,28 +14,16 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
-#include <semaphore.h>
 
 #include "../libs/document.h"
 #include "../libs/markdown.h"
 #include "../libs/helper.h"
-
-
-typedef struct{
-    char* username;
-    char* permission_level;
-}User;
-
-typedef struct {
-    char* S2C_pipe_name;
-    pid_t client_pid;
-}Client;
-
+#include "../libs/user.h"
 
 // Global variables. Shared in all threads.
 volatile int interupted = 0;
 int total_user = 0;
-int clinet_count = 0;
+int clients_count = 0;
 double server_time_interval;
 
 User** users;
@@ -50,41 +38,28 @@ pthread_t threads[MAX_CLIENTS];
 pthread_t broadcast_thread;
 
 
-void print_all_clients(Client** clients){
-    pthread_mutex_lock(&clients_lock);
-    for(int i = 0; i < clinet_count; i++){
-        printf("Client pid: %d\n", clients[i]->client_pid);
-        printf("Pipe name: %s\n", clients[i]->S2C_pipe_name);
-    }
-
-    pthread_mutex_unlock(&clients_lock);
-}
-
-void add_client(Client*** clients, Client* client){
-    // Extend the pipes mem allocation.
-    *clients = realloc(*clients, sizeof(Client*)*(clinet_count+1));
-    *clients[clinet_count] = client;
-    clinet_count++;
-}
-
-void remove_client(Client*** clients, Client* client){
-    for(int i = 0; i < clinet_count; i++){
-        if((*clients)[i]->client_pid == client->client_pid){
-            // Copy the clients before ith.
-            free((*clients)[i]->S2C_pipe_name);
-            free((*clients)[i]);
-            memcpy(**clients+i, **clients+i+1, sizeof(Client*)*(clinet_count-i-1));
-            *clients = realloc(*clients, sizeof(Client*)*(clinet_count-1));
-            break;
+// Function to write broadcast message
+// to all clients through corresponding pipes.
+void broadcast_to_all_clients(const char* message) {
+    for(int i = 0; i < clients_count; i++) {
+        if(clients[i] != NULL && clients[i]->S2C_pipe_name != NULL) {
+            int write_fd = open(clients[i]->S2C_pipe_name, O_WRONLY | O_NONBLOCK);
+            if(write_fd >= 0) {
+                write(write_fd, message, strlen(message));
+                close(write_fd);
+                // printf("Broadcasted to client %d via %s\n", 
+                //        clients[i]->client_pid, clients[i]->S2C_pipe_name);
+            } else {
+                printf("Failed to open pipe %s for client %d\n", 
+                       clients[i]->S2C_pipe_name, clients[i]->client_pid);
+            }
         }
     }
-    clinet_count--;
 }
-
 
 
 // The thread to handle client request.
-void* server_thread(void* arg){
+void* thread_for_client(void* arg){
     // Resolve the client pid. As a local variable.
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
@@ -93,13 +68,12 @@ void* server_thread(void* arg){
     bool connecting = true;
     pid_t client_pid = *(pid_t*)arg;
 
-    printf("Created a new thread for client: %d.\n", client_pid);
 
     // Create fifos to communicate with the client.
     char fifo_name1[BUFF_LEN];
     char fifo_name2[BUFF_LEN];
     sprintf(fifo_name1, "FIFO_S2C_%d", client_pid);
-    printf("S2C FIFO: %s.\n", fifo_name1);
+    // printf("S2C FIFO: %s.\n", fifo_name1);
     if(access(fifo_name1, F_OK) == 0){
         unlink(fifo_name1);
     }
@@ -109,7 +83,7 @@ void* server_thread(void* arg){
     // Add S2C pipe into array.
 
     sprintf(fifo_name2, "FIFO_C2S_%d", client_pid);
-    printf("C2S FIFO: %s.\n", fifo_name2);
+    // printf("C2S FIFO: %s.\n", fifo_name2);
     if(access(fifo_name2, F_OK) == 0){
         unlink(fifo_name2);
     }
@@ -119,17 +93,17 @@ void* server_thread(void* arg){
 
     // Send the response to the client.
     kill(client_pid, SIGRTMIN+1);
-    printf("Connection establish response sent to the client: %d.\n", client_pid);
+    // printf("Connection establish response sent to the client: %d.\n", client_pid);
 
     // Open the pipes to communicate with the client.
     int write_fd = open(fifo_name1, O_WRONLY);
     int read_fd = open(fifo_name2, O_RDONLY);
-    printf("Thread listening on %d.\n", read_fd);
-    printf("Thread writing on %d.\n", write_fd);
+    // printf("Thread listening on %d.\n", read_fd);
+    // printf("Thread writing on %d.\n", write_fd);
 
     // Read the username written by the client.
     read(read_fd, username, BUFF_LEN);
-    printf("Got username from pipe: %s.\n", username);
+    // printf("Got username from pipe: %s.\n", username);
 
     // Verify user.
     bool user_exist = false;
@@ -146,16 +120,16 @@ void* server_thread(void* arg){
             pthread_mutex_lock(&doc_lock);
             // Check document.
             // char* doc_content = markdown_flatten(doc);
-            printf("Doc version: %ld\n", doc->version_num);
-            printf("Doc len: %ld\n", doc->doc_len);
-            printf("Doc content: %s\n", doc->first_chunk->content);
+            // printf("Doc version: %ld\n", doc->version_num);
+            // printf("Doc len: %ld\n", doc->doc_len);
+            // printf("Doc content: %s\n", doc->first_chunk->content);
 
             // Write version number.
             snprintf(buff, sizeof(buff), "%s", permission);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->doc_len);
             snprintf(buff+strlen(buff), sizeof(buff), "%s", doc->first_chunk->content);
-            printf("Message payload:\n%s", buff);
+            // printf("Message payload:\n%s", buff);
             write(write_fd, buff, strlen(buff));
 
             // free(doc_content);
@@ -177,8 +151,8 @@ void* server_thread(void* arg){
     client->client_pid = client_pid;
     client->S2C_pipe_name = malloc(sizeof(char)*(strlen(fifo_name1)+1));
     strcpy(client->S2C_pipe_name, fifo_name1);
-    add_client(&clients, client);
-    print_all_clients(clients);
+    add_client(&clients, client, &clients_count);
+    print_all_clients(clients, clients_count);
 
     
 
@@ -271,12 +245,12 @@ void* server_thread(void* arg){
     if(interupted){
         // Send an interupt signal to the serving client.
         // printf("Sending SIGUSR1 to client: %d.\n", client_pid);
-        kill(client_pid, SIGUSR1);
+        kill(client_pid, SIGINT);
     }
 
     // Free the resources before terminate the thread.
     // Remove client.
-    remove_client(&clients, client);
+    remove_client(&clients, client, &clients_count);
     // Client pid.
     free(arg);
     // File descriptors.
@@ -293,81 +267,11 @@ void* server_thread(void* arg){
 }
 
 
-void handle_SIGRTMIN(int sig, siginfo_t* info, void* context){
-    // Check client amount.
-    if(clinet_count >= MAX_CLIENTS){
-        printf("Exceeded the maximum client amount.\n");
-        return;
-    }
-
-    pid_t client_pid = info->si_pid;
-    // printf("Got a SIGRTMIN from %d.\n", client_pid);
-
-    // Create a new thread for this client.
-    pid_t* client_pid_ptr = malloc(sizeof(pid_t));
-    *client_pid_ptr = client_pid;
-
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
-    if(pthread_create(&threads[clinet_count], NULL, 
-        server_thread, client_pid_ptr) != 0){
-        // Handle thread craetion error.
-        perror("Failed to create thread for the client.\n");
-        free(client_pid_ptr);
-    }else{
-        // printf("Successfully created a thread.\n");
-    }
-}
-
-// On interupt or QUIT calls, clear all threads.
-void handle_SIGINT(int sig){
-    interupted = 1;
-}
-
-
-void print_users(User** usres, int total_user){
-    for(int i = 0; i < total_user; i ++){
-        printf("User %d:\n", i);
-        printf("Username: %s.\n", usres[i]->username);
-        printf("Permission: %s.\n", usres[i]->permission_level);
-    }
-}
-
-void destroy_users(User** users, int total_user){
-    for(int i = 0; i < total_user; i ++){
-        free(users[i]->username);
-        free(users[i]->permission_level);
-        free(users[i]);
-    }
-    free(users);
-}
-
-void broadcast_to_all_clients(const char* message) {
-    for(int i = 0; i < clinet_count; i++) {
-        if(clients[i] != NULL && clients[i]->S2C_pipe_name != NULL) {
-            int write_fd = open(clients[i]->S2C_pipe_name, O_WRONLY | O_NONBLOCK);
-            if(write_fd >= 0) {
-                write(write_fd, message, strlen(message));
-                close(write_fd);
-                printf("Broadcasted to client %d via %s\n", 
-                       clients[i]->client_pid, clients[i]->S2C_pipe_name);
-            } else {
-                printf("Failed to open pipe %s for client %d\n", 
-                       clients[i]->S2C_pipe_name, clients[i]->client_pid);
-            }
-        }
-    }
-}
-
-
+// Thread to handle broadcast for the main thread.
 void* broadcast_thread_func(void* arg) {
-    printf("Broadcast thread created.\n");
     while(!interupted) {
         // Set a timer.
         sleep((int)server_time_interval);
-        printf("Broadcasting...\n");
         
         // Check server status.
         if(interupted) break;
@@ -436,17 +340,55 @@ void* broadcast_thread_func(void* arg) {
             }
         }
         sprintf(broadcast_message+strlen(broadcast_message), "END\n");
-        printf("Payload:\n%s", broadcast_message);
+        printf("Broadcast message:\n%s\n", broadcast_message);
 
         pthread_mutex_unlock(&log_lock);
 
         // Broadcast to clients.
         broadcast_to_all_clients(broadcast_message);
         printf("Broadcasted log to all clients\n");
-
-
     }
     return NULL;
+}
+
+
+
+void handle_SIGRTMIN(int sig, siginfo_t* info, void* context){
+    // Check client amount.
+    if(clients_count >= MAX_CLIENTS){
+        printf("Exceeded the maximum client amount.\n");
+        return;
+    }
+
+    pid_t client_pid = info->si_pid;
+    // printf("Got a SIGRTMIN from %d.\n", client_pid);
+
+    // Create a new thread for this client.
+    pid_t* client_pid_ptr = malloc(sizeof(pid_t));
+    *client_pid_ptr = client_pid;
+
+    // TODO Change the threads array logic here.
+    // TODO Change the threads array logic here.
+    // TODO Change the threads array logic here.
+    // TODO Change the threads array logic here.
+    if(pthread_create(&threads[clients_count], NULL, 
+        thread_for_client, client_pid_ptr) != 0){
+        // Handle thread craetion error.
+        perror("Failed to create thread for the client.\n");
+        free(client_pid_ptr);
+    }else{
+        // printf("Successfully created a thread.\n");
+    }
+}
+
+
+// On interupt or QUIT calls, clear all threads.
+void handle_SIGINT(int sig){
+    if(clients_count != 0){
+        printf("QUIT rejected, %d clients still connected.\n", clients_count);
+    }else{
+        interupted = 1;
+    }
 }
 
 
@@ -524,11 +466,7 @@ int main(int argc, char *argv[]){
     while (!interupted) {
         fgets(input_buff, sizeof(input_buff), stdin);
         if(strcmp(input_buff, "QUIT\n") == 0){
-            if(clinet_count != 0){
-                printf("QUIT rejected, %d clients still connected.\n", clinet_count);
-            }else{
-                handle_SIGINT(SIGINT);
-            }
+            handle_SIGINT(SIGINT);
         }else if(strcmp(input_buff, "DOC?\n") == 0){
             pthread_mutex_lock(&doc_lock);
             markdown_print(doc, stdout);
@@ -544,8 +482,8 @@ int main(int argc, char *argv[]){
 
 
     // Join all threads.
-    printf("Not terminated threads: %d.\n", clinet_count);
-    for(int i = 0; i < clinet_count; i++){
+    printf("Not terminated threads: %d.\n", clients_count);
+    for(int i = 0; i < clients_count; i++){
         printf("Waiting for thread: %p.\n", (void*)threads[i]);
         pthread_join(threads[i], NULL);
     }

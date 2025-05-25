@@ -42,6 +42,9 @@ void markdown_free(document *doc) {
 
 // === Edit Commands ===
 int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) {
+    if(version != doc->version_num){
+        return OUTDATED_VERSION;
+    }
     if(pos > doc->doc_len){
         return INVALID_CURSOR_POS;
     }
@@ -62,7 +65,27 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) 
 }
 
 int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
-    (void)doc; (void)version; (void)pos; (void)len;
+    if(version != doc->version_num){
+        return OUTDATED_VERSION;
+    }
+    if(pos > doc->first_chunk->length){
+        return INVALID_CURSOR_POS;
+    }
+    if(pos+len > doc->first_chunk->length){
+        return INVALID_CURSOR_POS;
+    }
+    char* new_content = (char*)malloc(sizeof(char)*(strlen(doc->first_chunk->content)-len+1));
+    strncpy(new_content, doc->first_chunk->content, pos);
+    if(pos+len < doc->first_chunk->length){
+        strncpy(new_content+pos, doc->first_chunk->content+pos+len, 
+            strlen(doc->first_chunk->content)-pos-len+1);
+    }
+    char* temp = doc->first_chunk->content;
+    doc->first_chunk->content = new_content;
+    free(temp);
+    doc->first_chunk->length -= len;
+    doc->doc_len -= len;
+
     return SUCCESS;
 }
 

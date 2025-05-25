@@ -3,6 +3,8 @@
 
 #include "../libs/document.h"
 
+#define CMD_LEN 256
+
 
 void print_log(log* doc_log){
 
@@ -36,6 +38,7 @@ log* init_log(){
     return log_head;
 }
 
+
 // Add a new edit command to the log.
 void add_edit(log** log_head, char* user, char* command, char* result, char* reject_reason){
     // Go to the last log.
@@ -56,8 +59,8 @@ void add_edit(log** log_head, char* user, char* command, char* result, char* rej
     }else{
         new_edit->reject_reason = NULL;
     }
-    // Now insert the new edit into the array.
 
+    // Now insert the new edit into the array.
     last_log->edits = realloc(last_log->edits, sizeof(edit*)*(last_log->edits_num+1));
     last_log->edits[last_log->edits_num] = new_edit;
     last_log->edits_num ++;
@@ -71,6 +74,88 @@ void add_log(log** log_head, log* new_log){
     }
     last_log->next_log = new_log;
     return;
+}
+
+
+
+// Get the log struct from the broadcast message.
+log* get_log(char* message){
+    log* new_log = init_log();
+    // For strtok_r
+    char* saveptr;
+    // Get the copy message.
+    char* msg_cpy = (char*)malloc(sizeof(char)*(strlen(message)+1));
+    strcpy(msg_cpy, message);
+
+    // Jump the version line.
+    char* token = strtok(msg_cpy, "\n");
+    // printf("Got version line: %s\n", token);
+    token = strtok(NULL, "\n");
+
+    // Handle every edit line.
+    while(token != NULL){
+        // Jump END line.
+        // printf("Got line: %s\n", token);
+        if(strcmp(token, "END") == 0){
+            break;
+        }
+        // Copy the message, avoiding editing the original message.
+        char* line = (char*)malloc(sizeof(char)*(strlen(token)+1));
+        strcpy(line, token);
+        
+        // Four components for the edit.
+        char user[CMD_LEN];
+        char command[CMD_LEN];
+        char result[CMD_LEN];
+        char reject_reason[CMD_LEN] = "";
+
+        
+        char* word = strtok_r(line, " ", &saveptr);
+        
+        if(word != NULL && strcmp(word, "Edit") == 0) {
+            // Get username
+            word = strtok_r(NULL, " ", &saveptr);
+            if(word != NULL) {
+                strcpy(user, word);
+            }
+            
+            // Get the remaining part.
+            char* remaining = strtok_r(NULL, "", &saveptr);
+            if(remaining != NULL) {
+                // Find the SUCCESS or Reject in the remaining.
+                char* success_pos = strstr(remaining, " SUCCESS");
+                char* reject_pos = strstr(remaining, " Reject");
+                
+                if(success_pos != NULL) {
+                    *success_pos = '\0';
+                    strcpy(command, remaining);
+                    strcpy(result, "SUCCESS");
+                } else if(reject_pos != NULL) {
+                    *reject_pos = '\0';
+                    strcpy(command, remaining);
+                    strcpy(result, "Reject");
+                    
+                    // Get the reject reason
+                    char* reason_part = reject_pos + 8;
+                    if(strlen(reason_part) > 0) {
+                        strcpy(reject_reason, reason_part);
+                    }
+                }
+            }
+        }
+        // printf("Parsed - User: %s, Command: %s, Result: %s", user, command, result);
+        // if(strlen(reject_reason) > 0) {
+        //     printf(", Reject reason: %s", reject_reason);
+        // }
+        // printf("\n");
+
+        add_edit(&new_log, user, command, result, reject_reason);
+        free(line);
+        token = strtok(NULL, "\n");
+    }
+    // Free copied message.
+    free(msg_cpy);
+    return new_log;
 }
 
 

@@ -9,11 +9,11 @@ TARGETS := server client
 # Default target
 all: $(TARGETS)
 
-server: server.o markdown.o document.o helper.o
-	$(CC) $(CFLAGS) -o server server.o markdown.o document.o helper.o $(LINKS)
+server: server.o markdown.o document.o helper.o user.o
+	$(CC) $(CFLAGS) -o server server.o markdown.o document.o helper.o user.o $(LINKS)
 	
-client: client.o markdown.o document.o helper.o
-	$(CC) $(CFLAGS) -o client client.o markdown.o document.o helper.o $(LINKS)
+client: client.o markdown.o document.o helper.o user.o
+	$(CC) $(CFLAGS) -o client client.o markdown.o document.o helper.o user.o $(LINKS)
 
 server.o: src/server.c
 	$(CC) $(CFLAGS) -c src/server.c -o server.o
@@ -29,6 +29,9 @@ document.o: src/document.c
 
 helper.o: src/helper.c
 	$(CC) $(CFLAGS) -c src/helper.c -o helper.o
+
+user.o: src/user.c
+	$(CC) $(CFLAGS) -c src/user.c -o user.o
 
 # Clean build artifacts
 clean:

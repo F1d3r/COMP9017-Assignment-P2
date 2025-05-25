@@ -25,6 +25,14 @@ log* doc_log;
 pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
 
+void handle_SIGRTMIN(int sig){
+    printf("Server responses. Establish connection.\n");
+}
+
+void handle_SIGINT(int sig){
+    printf("Got interrupted.\n");
+    interupted = 1;
+}
 
 void* broadcast_thread_func(void* arg){
     printf("Broadcast listener thread craeted.\n");
@@ -56,59 +64,20 @@ void* broadcast_thread_func(void* arg){
         }else if(FD_ISSET(read_fd, &readfds)){
             // There is data in the read_fd.
             // Read and handle the client requests from the pipe.
+            memset(buff, 0, sizeof(buff));
             read(read_fd, buff, BUFF_LEN);
-            printf("Got broadcast: %s.\n", buff);
-            
+            printf("Got broadcast:\n%s.\n", buff);
+            // Then resolve the broadcast message, 
+            // to update the log, and local document.
+            log* new_log = get_log(buff);
+            add_log(&doc_log, new_log);
+            // Update doc.
         }
     }
 
     printf("Broadcast listener terminated.\n");
     return NULL;
 }
-
-
-void handle_SIGRTMIN(int sig){
-    printf("Server responses. Establish connection.\n");
-}
-
-void handle_SIGINT(int sig){
-    printf("Got interrupted.\n");
-    interupted = 1;
-}
-
-// On receiving SIGUSR1. Means the server is down.
-// Terminate the client.
-void handle_SIGUSR1(int sig){
-    interupted = 1;
-}
-
-
-bool check_command_insert(char* arg1, char* arg2){
-    if(arg2 == NULL){
-        printf("Invaldi command.\n");
-        return false;
-    }
-    uint64_t pos = 0;
-    // Check if the position index an integer. 
-    if(!check_integer(arg1)){
-        printf("Invalid position index.\n");
-        return false;
-    }else{
-        pos = strtol(arg1, NULL, 10);
-        printf("Got position: %ld.\n", pos);
-    }
-    // Check position validation.
-    pthread_mutex_lock(&doc_lock);
-    if(pos > doc->doc_len){
-        printf("Invalid position index(out of boundry).\n");
-        pthread_mutex_unlock(&doc_lock);
-        return false;
-    }
-    pthread_mutex_unlock(&doc_lock);
-    printf("Valid argument.\n");
-    return true;
-}
-
 
 
 int main(int argc, char *argv[]){
@@ -149,12 +118,8 @@ int main(int argc, char *argv[]){
     pid_t server_pid = (pid_t)server_pid_value;
     pid_t pid = getpid();
 
-    // Register SIG handler.
-    // Handle SIGUSER1. The server told client to close.
-    signal(SIGUSR1, handle_SIGUSR1);
     // Handle SIGINT.
     signal(SIGINT, handle_SIGINT);
-    
     // Register Runtime Signal handler.
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
@@ -188,6 +153,7 @@ int main(int argc, char *argv[]){
     write(write_fd, username, strlen(username));
 
     // Read the server response.
+    memset(buff, 0, sizeof(buff));
     read(read_fd, buff, BUFF_LEN);
     printf("Got response:\n%s|END OF MESSAGE\n", buff);
     if(strcmp(buff, "Reject UNAUTHORISED") == 0){
@@ -260,23 +226,40 @@ int main(int argc, char *argv[]){
             continue;
         }
         // DOC
-        if(strcmp(command, "DOC?\n") == 0){
+        else if(strcmp(command, "DOC?\n") == 0){
             markdown_print(doc, stdout);
         }
         // PERM
-        if(strcmp(command, "PERM?\n") == 0){
+        else if(strcmp(command, "PERM?\n") == 0){
             printf("%s\n", permission);
         }
         // LOG
-        if(strcmp(command, "LOG?\n") == 0){
+        else if(strcmp(command, "LOG?\n") == 0){
             print_log(doc_log);
         }
         // INSERT
-        if(strcmp(command, "INSERT") == 0){
+        else if(strcmp(command, "INSERT") == 0){
             // Check command argument validation.
-            if(!check_command_insert(arg1, arg2)){
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_insert(doc, arg1, arg2)){
+                pthread_mutex_unlock(&doc_lock);
                 continue;
             }
+            pthread_mutex_unlock(&doc_lock);
+
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
+        }
+        // DELETE
+        else if(strcmp(command, "DEL") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_delete(doc, arg1, arg2)){
+                pthread_mutex_unlock(&doc_lock);
+                continue;
+            }
+            pthread_mutex_unlock(&doc_lock);
+
             printf("Command now: %s\n", command_input);
             write(write_fd, command_input, CMD_LEN);
         }
@@ -284,7 +267,7 @@ int main(int argc, char *argv[]){
         // LINK
         if(strcmp(command, "LINK") == 0){
             if(arg3 == NULL){
-                printf("Invaldi command.\n");
+                printf("Invalid command.\n");
                 continue;
             }
 
