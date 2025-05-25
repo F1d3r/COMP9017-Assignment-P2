@@ -152,7 +152,7 @@ void* thread_for_client(void* arg){
     client->S2C_pipe_name = malloc(sizeof(char)*(strlen(fifo_name1)+1));
     strcpy(client->S2C_pipe_name, fifo_name1);
     add_client(&clients, client, &clients_count);
-    print_all_clients(clients, clients_count);
+    // print_all_clients(clients, clients_count);
 
     
 
@@ -183,8 +183,17 @@ void* thread_for_client(void* arg){
             // There is data in the read_fd.
             // Read and handle the client requests from the pipe.
             memset(command_input, 0, CMD_LEN);
-            read(read_fd, command_input, CMD_LEN);
-            printf("Got command: %s from client: %d.\n", command_input, client_pid);
+            ssize_t bytes_read = read(read_fd, command_input, CMD_LEN);
+            if(bytes_read == 0){
+                connecting = false;
+                break;
+            } 
+            else if(bytes_read < 0) {
+                perror("Read error");
+                connecting = false;
+                break;
+            }
+            // printf("Got command: %s from client: %d.\n", command_input, client_pid);
             char temp[CMD_LEN];
             strcpy(temp, command_input);
 
@@ -195,11 +204,12 @@ void* thread_for_client(void* arg){
             char* arg3;
             resolve_command(temp, &command, &arg1, &arg2, &arg3);
 
-            // If the command is disconnect.
-            if(strcmp(command, "DISCONNECT\n") == 0){
-                connecting = false;
-                break;
-            }else if(strcmp(command, "INSERT") == 0){
+            // // If the command is disconnect.
+            // if(strcmp(command, "DISCONNECT\n") == 0){
+            //     connecting = false;
+            //     break;
+            // }else 
+            if(strcmp(command, "INSERT") == 0){
                 // Remove the last '\n';
                 command_input[strlen(command_input)-1] = '\0';
 
@@ -506,7 +516,7 @@ int main(int argc, char *argv[]){
             printf("----------\n");
             pthread_mutex_unlock(&log_lock);
         }else{
-            printf("Invalid command.\n");
+            // printf("Invalid command.\n");
         }
     }
 

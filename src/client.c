@@ -287,9 +287,9 @@ int main(int argc, char *argv[]){
 
     
     // Tell the server if interupted.
-    if(interupted){
-        write(write_fd, "DISCONNECT\n", strlen("DISCONNECT\n"));
-    }
+    // if(interupted){
+    //     write(write_fd, "DISCONNECT\n", strlen("DISCONNECT\n"));
+    // }
 
     markdown_free(doc);
     log_free(doc_log);
