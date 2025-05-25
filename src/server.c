@@ -15,8 +15,8 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "../libs/document.h"
 #include "../libs/markdown.h"
+#include "../libs/document.h"
 #include "../libs/helper.h"
 #include "../libs/user.h"
 

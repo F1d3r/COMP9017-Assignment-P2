@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../libs/markdown.h"
+#include "../libs/document.h"
 
 #define SUCCESS 0 
 #define INVALID_CURSOR_POS -1

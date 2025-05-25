@@ -1,7 +1,7 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-#include "../libs/document.h"
+#include "document.h"
 
 
 bool check_integer(char* str);

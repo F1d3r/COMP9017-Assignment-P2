@@ -1,39 +1,18 @@
-# Compiler settings
+# TODO: make sure the rules for server client and markdown filled!
 CC := gcc
-CFLAGS := -Wall -fsanitize=address -g
-LINKS := -lpthread
+CFLAGS := -Wall -std=c99 -D_POSIX_C_SOURCE=200809L -lpthread -fsanitize=address
 
-# Executables
-TARGETS := server client
+all: server client
 
-# Default target
-all: $(TARGETS)
+server: src/server.c src/document.c src/helper.c src/markdown.c src/user.c
+	$(CC) $(CFLAGS) -o server src/server.c src/document.c src/helper.c src/markdown.c src/user.c
 
-server: server.o markdown.o document.o helper.o user.o
-	$(CC) $(CFLAGS) -o server server.o markdown.o document.o helper.o user.o $(LINKS)
-	
-client: client.o markdown.o document.o helper.o user.o
-	$(CC) $(CFLAGS) -o client client.o markdown.o document.o helper.o user.o $(LINKS)
-
-server.o: src/server.c
-	$(CC) $(CFLAGS) -c src/server.c -o server.o
-
-client.o: src/client.c
-	$(CC) $(CFLAGS) -c src/client.c -o client.o
+client: src/client.c src/document.c src/helper.c src/markdown.c
+	$(CC) $(CFLAGS) -o client src/client.c src/document.c src/helper.c src/markdown.c
 
 markdown.o: src/markdown.c
 	$(CC) $(CFLAGS) -c src/markdown.c -o markdown.o
 
-document.o: src/document.c
-	$(CC) $(CFLAGS) -c src/document.c -o document.o
-
-helper.o: src/helper.c
-	$(CC) $(CFLAGS) -c src/helper.c -o helper.o
-
-user.o: src/user.c
-	$(CC) $(CFLAGS) -c src/user.c -o user.o
-
-# Clean build artifacts
 clean:
 	find . -type p -name "FIFO_*" -exec unlink {} \;
-	rm -f *.o server client
+	rm -f server client markdown.o
