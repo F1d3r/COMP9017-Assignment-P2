@@ -43,9 +43,11 @@ void markdown_free(document *doc) {
 // === Edit Commands ===
 int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) {
     if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
         return OUTDATED_VERSION;
     }
     if(pos > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
         return INVALID_CURSOR_POS;
     }
     
@@ -145,7 +147,7 @@ int markdown_link(document *doc, uint64_t version, size_t start, size_t end, con
 void markdown_print(const document *doc, FILE *stream) {
     char* doc_content = markdown_flatten(doc);
     if (doc_content != NULL) {
-        fprintf(stream, "%s", doc_content);
+        fprintf(stream, "%s\n", doc_content);
         fflush(stream);
     }
     free(doc_content);

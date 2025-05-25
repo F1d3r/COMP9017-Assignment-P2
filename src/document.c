@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include "../libs/document.h"
+#include "../libs/markdown.h"
+#include "../libs/helper.h"
 
 #define CMD_LEN 256
 
@@ -67,6 +69,7 @@ void add_edit(log** log_head, char* user, char* command, char* result, char* rej
     return;
 }
 
+
 void add_log(log** log_head, log* new_log){
     log* last_log = *log_head;
     while(last_log->next_log != NULL){
@@ -75,7 +78,6 @@ void add_log(log** log_head, log* new_log){
     last_log->next_log = new_log;
     return;
 }
-
 
 
 // Get the log struct from the broadcast message.
@@ -89,7 +91,20 @@ log* get_log(char* message){
 
     // Jump the version line.
     char* token = strtok(msg_cpy, "\n");
-    // printf("Got version line: %s\n", token);
+
+    if(token != NULL){
+        // printf("Got version line: %s\n", token);
+        char* ver_line = (char*)malloc(sizeof(char)*strlen(token) + 1);
+        strcpy(ver_line, token);
+        char* ver_save_ptr;
+        char* word = strtok_r(token, " ", &ver_save_ptr);
+        word = strtok_r(NULL, " ", &ver_save_ptr);
+        size_t ver_num = strtol(word, NULL, 10);
+        new_log->version_num = ver_num;
+
+        free(ver_line);
+    }
+
     token = strtok(NULL, "\n");
 
     // Handle every edit line.
@@ -156,6 +171,46 @@ log* get_log(char* message){
     // Free copied message.
     free(msg_cpy);
     return new_log;
+}
+
+
+// Update the document according to the edits in the latest log.
+int update_doc(document* doc, log* doc_log){
+    int num_edit_processed = 0;
+    log* last_log = doc_log;
+    while(last_log->next_log != NULL){
+        last_log = last_log->next_log;
+    }
+    for(int i = 0; i < last_log->edits_num; i ++){
+        // Only process success commands.
+        if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+            char command_input[CMD_LEN];
+            strcpy(command_input, last_log->edits[i]->command);
+            char* command = NULL;
+            char* arg1 = NULL;
+            char* arg2 = NULL;
+            char* arg3 = NULL;
+            resolve_command(command_input, &command, &arg1, &arg2, &arg3);
+
+            if(strcmp(command, "INSERT") == 0){
+                printf("Inserting to document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                if(markdown_insert(doc, last_log->version_num, pos, arg2) == 0){
+                    num_edit_processed ++;
+                }
+            }
+            else if(strcmp(command, "DEL") == 0){
+                printf("Deleting from document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                size_t len = strtol(arg2, NULL, 10);
+                if(markdown_delete(doc, last_log->version_num, pos, len) == 0){
+                    num_edit_processed ++;
+                }
+            }
+        }
+    }
+
+    return num_edit_processed;
 }
 
 

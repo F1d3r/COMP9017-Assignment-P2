@@ -69,9 +69,16 @@ void* broadcast_thread_func(void* arg){
             printf("Got broadcast:\n%s.\n", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
+            pthread_mutex_lock(&log_lock);
             log* new_log = get_log(buff);
             add_log(&doc_log, new_log);
+            pthread_mutex_unlock(&log_lock);
             // Update doc.
+            int num_edit_processed = update_doc(doc, doc_log);
+            if(num_edit_processed != 0){
+                doc->version_num ++;
+                new_log->version_num ++;
+            }
         }
     }
 
@@ -228,14 +235,17 @@ int main(int argc, char *argv[]){
         // DOC
         else if(strcmp(command, "DOC?\n") == 0){
             markdown_print(doc, stdout);
+            printf("----------\n");
         }
         // PERM
         else if(strcmp(command, "PERM?\n") == 0){
             printf("%s\n", permission);
+            printf("----------\n");
         }
         // LOG
         else if(strcmp(command, "LOG?\n") == 0){
             print_log(doc_log);
+            printf("----------\n");
         }
         // INSERT
         else if(strcmp(command, "INSERT") == 0){

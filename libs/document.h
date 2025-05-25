@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 /**
  * This file is the header file for all the document functions. You will be tested on the functions inside markdown.h
  * You are allowed to and encouraged multiple helper functions and data structures, and make your code as modular as possible. 
@@ -52,6 +53,8 @@ void add_edit(log** log_head, char* user, char* command, char* result, char* rej
 log* init_log();
 
 log* get_log(char* message);
+
+int update_doc(document* doc, log* doc_log);
 
 void log_free(log* doc_log);
 // Functions from here onwards.

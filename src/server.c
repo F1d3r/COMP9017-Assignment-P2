@@ -275,58 +275,22 @@ void* broadcast_thread_func(void* arg) {
         
         // Check server status.
         if(interupted) break;
+
+        // Update local documents according to the success log edits.
+        pthread_mutex_lock(&doc_lock);
+        pthread_mutex_lock(&log_lock);
+        int num_edit_processed = update_doc(doc, doc_log);
+        pthread_mutex_unlock(&doc_lock);
         
+
+
         // Build the message to broadcast.
         char broadcast_message[BUFF_LEN];
-        pthread_mutex_lock(&log_lock);
-        // Made a new log.
-        log* new_log = init_log();
+        // Prepare the message.
         log* last_log = doc_log;
         while(last_log->next_log != NULL){
             last_log = last_log->next_log;
         }
-
-        // Check all commands in previous time interval.
-        // If there is at least one success, increase the version number.
-        bool file_updated = false;
-        for(int i = 0; i < last_log->edits_num; i++){
-            if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
-                file_updated = true;
-                break;
-            }
-        }
-        if(file_updated){
-            new_log->version_num = last_log->version_num+1;
-        }else{
-            new_log->version_num = last_log->version_num;
-        }
-        // Record version length.
-        pthread_mutex_lock(&doc_lock);
-        last_log->current_ver_len = doc->doc_len;
-        // Update local documents according to the success log edits.
-        for(int i = 0; i < last_log->edits_num; i ++){
-            // Only process success commands.
-            if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
-                char command_input[CMD_LEN];
-                strcpy(command_input, last_log->edits[i]->command);
-                char* command = NULL;
-                char* arg1 = NULL;
-                char* arg2 = NULL;
-                char* arg3 = NULL;
-                resolve_command(command_input, &command, &arg1, &arg2, &arg3);
-
-                if(strcmp(command, "INSERT") == 0){
-                    size_t pos = strtol(arg1, NULL, 10);
-                    markdown_insert(doc, last_log->version_num, pos, arg2);
-                }
-            }
-        }
-        pthread_mutex_unlock(&doc_lock);
-        // Add the new log into the log list.
-        add_log(&doc_log, new_log);
-        pthread_mutex_unlock(&log_lock);
-
-        // Prepare the message.
         sprintf(broadcast_message, "Version %ld\n", last_log->version_num);
         for(int i = 0; i < last_log->edits_num; i++){
             sprintf(broadcast_message+strlen(broadcast_message), "Edit %s %s %s", 
@@ -342,11 +306,26 @@ void* broadcast_thread_func(void* arg) {
         sprintf(broadcast_message+strlen(broadcast_message), "END\n");
         printf("Broadcast message:\n%s\n", broadcast_message);
 
-        pthread_mutex_unlock(&log_lock);
-
         // Broadcast to clients.
         broadcast_to_all_clients(broadcast_message);
         printf("Broadcasted log to all clients\n");
+
+        // Make a new log.
+        log* new_log = init_log();
+        // Check all commands in previous time interval.
+        // If there is at least one success, increase the version number.
+        if(num_edit_processed != 0){
+            new_log->version_num = last_log->version_num+1;
+            doc->version_num += 1;
+        }else{
+            new_log->version_num = last_log->version_num;
+        }
+
+        // Add the new log into the log list.
+        add_log(&doc_log, new_log);
+        pthread_mutex_unlock(&log_lock);
+
+        
     }
     return NULL;
 }
@@ -397,6 +376,7 @@ int main(int argc, char *argv[]){
     doc = markdown_init();
     doc_log = init_log();
     markdown_print(doc, stdout);
+    printf("\n");
 
     // Server PID.  
     pid_t server_pid = getpid();
@@ -470,10 +450,13 @@ int main(int argc, char *argv[]){
         }else if(strcmp(input_buff, "DOC?\n") == 0){
             pthread_mutex_lock(&doc_lock);
             markdown_print(doc, stdout);
+            printf("----------\n");
+            printf("\n");
             pthread_mutex_unlock(&doc_lock);
         }else if(strcmp(input_buff, "LOG?\n") == 0){
             pthread_mutex_lock(&log_lock);
             print_log(doc_log);
+            printf("----------\n");
             pthread_mutex_unlock(&log_lock);
         }else{
             printf("Invalid command.\n");
