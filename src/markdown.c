@@ -64,9 +64,6 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, const char *con
     doc->next_version->doc_len += strlen(content);
 
     doc->next_version->version_num = doc->version_num+1;
-
-    printf("Doc now:\n");
-    markdown_print(doc, stdout);
     return SUCCESS;
 }
 
@@ -82,10 +79,12 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
     }
     char* new_content = (char*)malloc(sizeof(char)*(strlen(doc->first_chunk->content)-len+1));
     strncpy(new_content, doc->next_version->first_chunk->content, pos);
+    printf("Chunk length: %d\n", doc->next_version->first_chunk->length);
     if(pos+len < doc->next_version->first_chunk->length){
         strncpy(new_content+pos, doc->next_version->first_chunk->content+pos+len, 
             strlen(doc->next_version->first_chunk->content)-pos-len+1);
     }
+    new_content[doc->next_version->first_chunk->length - len] = '\0';
     char* temp = doc->next_version->first_chunk->content;
     doc->next_version->first_chunk->content = new_content;
     free(temp);
