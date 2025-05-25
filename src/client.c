@@ -66,7 +66,7 @@ void* broadcast_thread_func(void* arg){
             // Read and handle the client requests from the pipe.
             memset(buff, 0, sizeof(buff));
             read(read_fd, buff, BUFF_LEN);
-            printf("Got broadcast:\n%s.\n", buff);
+            // printf("Got broadcast:\n%s.\n", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
             pthread_mutex_lock(&log_lock);
@@ -76,7 +76,7 @@ void* broadcast_thread_func(void* arg){
             // Update doc.
             int num_edit_processed = update_doc(doc, doc_log);
             if(num_edit_processed != 0){
-                doc->version_num ++;
+                markdown_increment_version(&doc);
                 new_log->version_num ++;
             }
         }
@@ -220,10 +220,10 @@ int main(int argc, char *argv[]){
         char* arg2;
         char* arg3;
         resolve_command(temp, &command, &arg1, &arg2, &arg3);
-        printf("Got command: %s.\n", command);
-        printf("Got argument1: %s.\n", arg1);
-        printf("Got argument2: %s.\n", arg2);
-        printf("Got argument3: %s.\n", arg3);
+        // printf("Got command: %s.\n", command);
+        // printf("Got argument1: %s.\n", arg1);
+        // printf("Got argument2: %s.\n", arg2);
+        // printf("Got argument3: %s.\n", arg3);
         
         // Check the command formatting.
         // Make sure the command is valid formatting.

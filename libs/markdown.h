@@ -39,5 +39,5 @@ void markdown_print(const document *doc, FILE *stream);
 char *markdown_flatten(const document *doc);
 
 // === Versioning ===
-void markdown_increment_version(document *doc);
+void markdown_increment_version(document **doc);
 #endif // MARKDOWN_H

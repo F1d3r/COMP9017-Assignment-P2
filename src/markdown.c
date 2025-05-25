@@ -20,9 +20,23 @@ document *markdown_init(void) {
     newDoc->first_chunk->offset = 0;
     newDoc->first_chunk->length = 0;
     newDoc->first_chunk->content = (char*)malloc(sizeof(char)*(newDoc->first_chunk->length+1));
-
-    // strcpy(newDoc->first_chunk->content, "1234");
     newDoc->first_chunk->content[newDoc->first_chunk->length] = '\0';
+
+
+    // Next version.
+    newDoc->next_version = (document*)malloc(sizeof(document));
+    memcpy(newDoc->next_version, newDoc, sizeof(document));
+
+    // newDoc->next_version = (document*)malloc(sizeof(document));
+    // newDoc->next_version->version_num = 0;
+    // newDoc->next_version->doc_len = 0;
+    // newDoc->next_version->first_chunk = (chunk*)malloc(sizeof(chunk));
+    // newDoc->next_version->first_chunk->next_chunk = NULL;
+    // newDoc->next_version->first_chunk->offset = 0;
+    // newDoc->next_version->first_chunk->length = 0;
+    // newDoc->next_version->first_chunk->content = (char*)malloc(sizeof(char)*(newDoc->first_chunk->length+1));
+    // newDoc->next_version->first_chunk->content[newDoc->first_chunk->length] = '\0';
+    // newDoc->next_version->next_version = NULL;
 
     return newDoc;
 }
@@ -36,6 +50,7 @@ void markdown_free(document *doc) {
         current_chunk = temp;
     }
 
+    free(doc->next_version);
     free(doc);
     return;
 }
@@ -51,18 +66,19 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, char *content) 
         return INVALID_CURSOR_POS;
     }
     
-    char* new_content = (char*)malloc(sizeof(char)*(doc->first_chunk->length+strlen(content)+1)); 
-    memcpy(new_content, doc->first_chunk->content, pos);
+    char* new_content = (char*)malloc(sizeof(char)*(doc->next_version->first_chunk->length+strlen(content)+1)); 
+    memcpy(new_content, doc->next_version->first_chunk->content, pos);
     memcpy(new_content+pos, content, strlen(content));
-    memcpy(new_content+pos+strlen(content), doc->first_chunk->content+pos, doc->first_chunk->length-pos);
-    free(doc->first_chunk->content);
-    new_content[doc->first_chunk->length+strlen(content)] = '\0';
+    memcpy(new_content+pos+strlen(content), doc->next_version->first_chunk->content+pos, 
+        doc->next_version->first_chunk->length-pos);
+    free(doc->next_version->first_chunk->content);
+    new_content[doc->next_version->first_chunk->length+strlen(content)] = '\0';
 
-    doc->first_chunk->content = new_content;
-    doc->first_chunk->length += strlen(content);
-    doc->doc_len += strlen(content);
+    doc->next_version->first_chunk->content = new_content;
+    doc->next_version->first_chunk->length += strlen(content);
+    doc->next_version->doc_len += strlen(content);
 
-
+    doc->next_version->version_num = doc->version_num+1;
     return SUCCESS;
 }
 
@@ -77,17 +93,18 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
         return INVALID_CURSOR_POS;
     }
     char* new_content = (char*)malloc(sizeof(char)*(strlen(doc->first_chunk->content)-len+1));
-    strncpy(new_content, doc->first_chunk->content, pos);
-    if(pos+len < doc->first_chunk->length){
-        strncpy(new_content+pos, doc->first_chunk->content+pos+len, 
-            strlen(doc->first_chunk->content)-pos-len+1);
+    strncpy(new_content, doc->next_version->first_chunk->content, pos);
+    if(pos+len < doc->next_version->first_chunk->length){
+        strncpy(new_content+pos, doc->next_version->first_chunk->content+pos+len, 
+            strlen(doc->next_version->first_chunk->content)-pos-len+1);
     }
-    char* temp = doc->first_chunk->content;
-    doc->first_chunk->content = new_content;
+    char* temp = doc->next_version->first_chunk->content;
+    doc->next_version->first_chunk->content = new_content;
     free(temp);
-    doc->first_chunk->length -= len;
-    doc->doc_len -= len;
+    doc->next_version->first_chunk->length -= len;
+    doc->next_version->doc_len -= len;
 
+    doc->next_version->version_num = doc->version_num+1;
     return SUCCESS;
 }
 
@@ -170,7 +187,17 @@ char *markdown_flatten(const document *doc) {
 }
 
 // === Versioning ===
-void markdown_increment_version(document *doc) {
-    doc->version_num++;
+void markdown_increment_version(document** doc) {
+    // Create a new next version doc.
+    document* newDoc = (document*)malloc(sizeof(document));
+    memcpy(newDoc, (*doc)->next_version, sizeof(document));
+
+    // Remove the old one.
+    document* temp = *doc;
+    (*doc) = (*doc)->next_version;
+    free(temp);
+
+    // Set the next version doc.
+    (*doc)->next_version = newDoc;
 }
 

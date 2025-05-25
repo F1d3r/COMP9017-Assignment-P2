@@ -271,7 +271,11 @@ void* thread_for_client(void* arg){
 void* broadcast_thread_func(void* arg) {
     while(!interupted) {
         // Set a timer.
-        sleep((int)server_time_interval);
+        // Sleep in server_time_interval milliseconds.
+        struct timespec ts;
+        ts.tv_sec = (int)server_time_interval/1000;
+        ts.tv_nsec = ((int)server_time_interval%1000) * 1000000;
+        nanosleep(&ts, NULL);
         
         // Check server status.
         if(interupted) break;
@@ -282,7 +286,6 @@ void* broadcast_thread_func(void* arg) {
         int num_edit_processed = update_doc(doc, doc_log);
         pthread_mutex_unlock(&doc_lock);
         
-
 
         // Build the message to broadcast.
         char broadcast_message[BUFF_LEN];
@@ -304,11 +307,11 @@ void* broadcast_thread_func(void* arg) {
             }
         }
         sprintf(broadcast_message+strlen(broadcast_message), "END\n");
-        printf("Broadcast message:\n%s\n", broadcast_message);
+        // printf("Broadcast message:\n%s\n", broadcast_message);
 
         // Broadcast to clients.
         broadcast_to_all_clients(broadcast_message);
-        printf("Broadcasted log to all clients\n");
+        // printf("Broadcasted log to all clients\n");
 
         // Make a new log.
         log* new_log = init_log();
@@ -316,7 +319,7 @@ void* broadcast_thread_func(void* arg) {
         // If there is at least one success, increase the version number.
         if(num_edit_processed != 0){
             new_log->version_num = last_log->version_num+1;
-            doc->version_num += 1;
+            markdown_increment_version(&doc);
         }else{
             new_log->version_num = last_log->version_num;
         }

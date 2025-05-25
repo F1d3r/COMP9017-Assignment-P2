@@ -25,6 +25,7 @@ typedef struct document{
     uint64_t version_num;
     uint64_t doc_len;
     struct chunk* first_chunk;
+    struct document* next_version;
 } document;
 
 typedef struct edit{
@@ -44,6 +45,8 @@ typedef struct log{
 }log;
 
 
+int update_doc(document* doc, log* doc_log);
+
 void print_log(log* doc_log);
 
 void add_log(log** doc_log, log* new_log);
@@ -54,8 +57,7 @@ log* init_log();
 
 log* get_log(char* message);
 
-int update_doc(document* doc, log* doc_log);
-
 void log_free(log* doc_log);
 // Functions from here onwards.
+
 #endif
