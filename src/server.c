@@ -93,7 +93,10 @@ void* thread_for_client(void* arg){
     }
 
     // Send the response to the client.
-    kill(client_pid, SIGRTMIN+1);
+    union sigval value;
+    value.sival_int = client_pid;
+    // Send the SIGRTMIN with client pid.
+    sigqueue(client_pid, SIGRTMIN+1, value);
     printf("Connection establish response sent to the client: %d.\n", client_pid);
 
     // Open the pipes to communicate with the client.
@@ -101,7 +104,12 @@ void* thread_for_client(void* arg){
     printf("Thread listening on %d.\n", read_fd);
     
     // Read the username written by the client.
-    read(read_fd, username, BUFF_LEN);
+    ssize_t bytes = read(read_fd, username, BUFF_LEN);
+    if(bytes < 0){
+        printf("Reading error.\n");
+    }else{
+        printf("Read: %ld\n", bytes);
+    }
     username[strlen(username)-1] = '\0';
     printf("Got username from pipe: %s.\n", username);
 
@@ -805,7 +813,7 @@ int main(int argc, char *argv[]){
 
 
     // Setup the valid users.
-    FILE* roles = fopen("./roles.txt", "r");
+    FILE* roles = fopen("../roles.txt", "r");
     if(!roles){
         perror("Failed to open role file.\n");
         return 1;

@@ -161,15 +161,15 @@ int main(int argc, char *argv[]){
     sa.sa_flags = SA_SIGINFO;
     sa.sa_handler = handle_SIGRTMIN;
     sigaction(SIGRTMIN+1, &sa, NULL);
-    // Send its pid to the server as a signal value.
-    union sigval value;
-    value.sival_int = pid;
     
     sigset_t signal_set;
     int sig;
     sigemptyset(&signal_set);
     sigaddset(&signal_set, SIGRTMIN+1);
 
+    // Send its pid to the server as a signal value.
+    union sigval value;
+    value.sival_int = pid;
     // Send the SIGRTMIN with client pid.
     sigqueue(server_pid, SIGRTMIN, value);
     // sigwait(&signal_set, &sig);
