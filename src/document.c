@@ -222,6 +222,14 @@ int update_doc(document* doc, log* doc_log){
                     num_edit_processed ++;
                 }
             }
+            else if(strcmp(command, "HEADING") == 0){
+                printf("Newline document.\n");
+                size_t level = strtol(arg1, NULL, 10);
+                size_t pos = strtol(arg2, NULL, 10);
+                if(markdown_heading(doc, last_log->version_num, level, pos) == 0){
+                    num_edit_processed ++;
+                }
+            }
         }
     }
 

@@ -16,4 +16,6 @@ bool check_command_bold(document* doc, char* arg1, char* arg2);
 
 bool check_command_newline(document* doc, char* arg1);
 
+bool check_command_heading(document* doc, char* arg1, char* arg2);
+
 #endif

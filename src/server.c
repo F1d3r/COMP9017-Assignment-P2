@@ -369,6 +369,50 @@ void* thread_for_client(void* arg){
                 add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
                 pthread_mutex_unlock(&log_lock);
             }
+            else if(strcmp(command, "HEADING") == 0){
+                // Remove the last '\n';
+                command_input[strlen(command_input)-1] = '\0';
+
+                // Check permission.
+                if(strcmp(permission, "write\n") != 0){
+                    // Unauthorised.
+                    pthread_mutex_lock(&log_lock);
+                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("No permission.\n");
+                    continue;
+                }
+
+                // Check position
+                uint64_t level = strtol(arg1, NULL, 10);
+                uint64_t pos = strtol(arg2, NULL, 10);
+                pthread_mutex_lock(&log_lock);
+                log* last_log = doc_log;
+                while(last_log->next_log != NULL){
+                    last_log = last_log->next_log;
+                }
+                if(level < 1 || level > 3){
+                    // Out of boundry.
+                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("Invalid position.\n");
+                    continue;
+                }
+                if(pos > doc->doc_len){
+                    // Out of boundry.
+                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&log_lock);
+                    printf("Invalid position.\n");
+                    continue;
+                }
+                pthread_mutex_unlock(&log_lock);
+                printf("The command is valid!\n");
+
+                // Then write the command into log.
+                pthread_mutex_lock(&log_lock);
+                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&log_lock);
+            }
         }
         
     }

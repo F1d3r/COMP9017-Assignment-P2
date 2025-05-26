@@ -106,16 +106,31 @@ int markdown_newline(document *doc, uint64_t version, size_t pos) {
         printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
         return INVALID_CURSOR_POS;
     }
-    char* bold_symbol = (char*)malloc(sizeof(char)*3);
-    strcpy(bold_symbol, "\n");
-    markdown_insert(doc, version, pos, bold_symbol);
-    free(bold_symbol);
+    char* newline_symbol = (char*)malloc(sizeof(char)*2);
+    strcpy(newline_symbol, "\n");
+    markdown_insert(doc, version, pos, newline_symbol);
+    free(newline_symbol);
     
     return SUCCESS;
 }
 
 int markdown_heading(document *doc, uint64_t version, size_t level, size_t pos) {
-    (void)doc; (void)version; (void)level; (void)pos;
+    if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+        return OUTDATED_VERSION;
+    }
+    if(pos > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    char* heading_symbol = (char*)malloc(sizeof(char)*5);
+    for(int i = 0; i < level; i++){
+        strcpy(heading_symbol+i, "#");
+    }
+    strcpy(heading_symbol+strlen(heading_symbol), " ");
+    markdown_insert(doc, version, pos, heading_symbol);
+    free(heading_symbol);
+    
     return SUCCESS;
 }
 

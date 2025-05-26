@@ -75,6 +75,13 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
         *arg2 = NULL;
         *arg3 = NULL;
     }
+    else if(strcmp(*command, "HEADING") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        token = strtok(NULL, "\n");
+        *arg2 = token;
+        *arg3 = NULL;
+    }
     else{
         *arg1 = NULL;
         *arg2 = NULL;
@@ -190,7 +197,6 @@ bool check_command_newline(document* doc, char* arg1){
     }
     size_t pos = 0;
     arg1[strlen(arg1)-1] = '\0';
-    printf("TEST %s", arg1);
     // Check if the position index an integer.
     if(!check_integer(arg1)){
         printf("Invalid position index.\n");
@@ -201,6 +207,41 @@ bool check_command_newline(document* doc, char* arg1){
     printf("Got position start: %ld.\n", pos);
 
     // Check position validation.
+    if(pos > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
+    printf("Valid argument.\n");
+    return true;
+}
+
+
+bool check_command_heading(document* doc, char* arg1, char* arg2){
+    if(arg1 == NULL){
+        printf("Invalid command.\n");
+        return false;
+    }
+    size_t level = 0;
+    size_t pos = 0;
+    // Check if the position index an integer.
+    if(!check_integer(arg1)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+    if(!check_integer(arg2)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+
+    level = strtol(arg1, NULL, 10);
+    pos = strtol(arg2, NULL, 10);
+    printf("Got position start: %ld.\n", pos);
+
+    // Check position validation.
+    if(level < 1 || level > 3){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
     if(pos > doc->doc_len){
         printf("Invalid position index(out of boundry).\n");
         return false;
