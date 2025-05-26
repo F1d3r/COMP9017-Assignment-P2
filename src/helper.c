@@ -102,6 +102,12 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
         *arg2 = token;
         *arg3 = NULL;
     }
+    else if(strcmp(*command, "HORIZONTAL_RULE") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        *arg2 = NULL;
+        *arg3 = NULL;
+    }
     else{
         *arg1 = NULL;
         *arg2 = NULL;
@@ -370,6 +376,32 @@ bool check_command_code(document* doc, char* arg1, char* arg2){
         return false;
     }
     if(start >= end){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
+    printf("Valid argument.\n");
+    return true;
+}
+
+
+bool check_command_horizontal(document* doc, char* arg1){
+    if(arg1 == NULL){
+        printf("Invalid command.\n");
+        return false;
+    }
+    size_t pos = 0;
+    arg1[strlen(arg1)-1] = '\0';
+    // Check if the position index an integer.
+    if(!check_integer(arg1)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+
+    pos = strtol(arg1, NULL, 10);
+    printf("Got position: %ld.\n", pos);
+
+    // Check position validation.
+    if(pos > doc->doc_len){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }

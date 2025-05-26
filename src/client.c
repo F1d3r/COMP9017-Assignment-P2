@@ -367,6 +367,19 @@ int main(int argc, char *argv[]){
             printf("Command now: %s\n", command_input);
             write(write_fd, command_input, CMD_LEN);
         }
+        // HORIZONTAL_RULE
+        else if(strcmp(command, "HORIZONTAL_RULE") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_horizontal(doc, arg1)){
+                pthread_mutex_unlock(&doc_lock);
+                continue;
+            }
+            pthread_mutex_unlock(&doc_lock);
+
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
+        }
 
         // LINK
         if(strcmp(command, "LINK") == 0){

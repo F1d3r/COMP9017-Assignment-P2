@@ -24,4 +24,6 @@ bool check_command_blockquote(document* doc, char* arg1);
 
 bool check_command_code(document* doc, char* arg1, char* arg2);
 
+bool check_command_horizontal(document* doc, char* arg1);
+
 #endif

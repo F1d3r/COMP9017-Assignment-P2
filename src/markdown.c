@@ -240,7 +240,19 @@ int markdown_code(document *doc, uint64_t version, size_t start, size_t end) {
 }
 
 int markdown_horizontal_rule(document *doc, uint64_t version, size_t pos) {
-    (void)doc; (void)version; (void)pos;
+    if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+        return OUTDATED_VERSION;
+    }
+    if(pos > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    char* newline_symbol = (char*)malloc(sizeof(char)*6);
+    strcpy(newline_symbol, "\n---\n");
+    markdown_insert(doc, version, pos, newline_symbol);
+    free(newline_symbol);
+    
     return SUCCESS;
 }
 
