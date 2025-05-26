@@ -328,11 +328,24 @@ int main(int argc, char *argv[]){
             printf("Command now: %s\n", command_input);
             write(write_fd, command_input, CMD_LEN);
         }
-        // NEWLINE
+        // ITALIC
         else if(strcmp(command, "ITALIC") == 0){
             // Check command argument validation.
             pthread_mutex_lock(&doc_lock);
             if(!check_command_italic(doc, arg1, arg2)){
+                pthread_mutex_unlock(&doc_lock);
+                continue;
+            }
+            pthread_mutex_unlock(&doc_lock);
+
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
+        }
+        // BLOCKQUOTE
+        else if(strcmp(command, "BLOCKQUOTE") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_blockquote(doc, arg1)){
                 pthread_mutex_unlock(&doc_lock);
                 continue;
             }
