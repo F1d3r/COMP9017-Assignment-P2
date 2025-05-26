@@ -12,4 +12,6 @@ bool check_command_insert(document* doc, char* arg1, char* arg2);
 
 bool check_command_delete(document* doc, char* arg1, char* arg2);
 
+bool check_command_bold(document* doc, char* arg1, char* arg2);
+
 #endif
