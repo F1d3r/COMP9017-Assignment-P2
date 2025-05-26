@@ -69,6 +69,12 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
         *arg2 = token;
         *arg3 = NULL;
     }
+    else if(strcmp(*command, "NEWLINE") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        *arg2 = NULL;
+        *arg3 = NULL;
+    }
     else{
         *arg1 = NULL;
         *arg2 = NULL;
@@ -183,7 +189,9 @@ bool check_command_newline(document* doc, char* arg1){
         return false;
     }
     size_t pos = 0;
-    // Check if the position index an integer. 
+    arg1[strlen(arg1)-1] = '\0';
+    printf("TEST %s", arg1);
+    // Check if the position index an integer.
     if(!check_integer(arg1)){
         printf("Invalid position index.\n");
         return false;

@@ -215,6 +215,13 @@ int update_doc(document* doc, log* doc_log){
                     num_edit_processed ++;
                 }
             }
+            else if(strcmp(command, "NEWLINE") == 0){
+                printf("Newline document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                if(markdown_newline(doc, last_log->version_num, pos) == 0){
+                    num_edit_processed ++;
+                }
+            }
         }
     }
 

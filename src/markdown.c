@@ -98,7 +98,19 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
 
 // === Formatting Commands ===
 int markdown_newline(document *doc, uint64_t version, size_t pos) {
-    (void)doc; (void)version; (void)pos;
+    if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+        return OUTDATED_VERSION;
+    }
+    if(pos > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    char* bold_symbol = (char*)malloc(sizeof(char)*3);
+    strcpy(bold_symbol, "\n");
+    markdown_insert(doc, version, pos, bold_symbol);
+    free(bold_symbol);
+    
     return SUCCESS;
 }
 
