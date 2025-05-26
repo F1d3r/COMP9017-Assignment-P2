@@ -119,6 +119,8 @@ int main(int argc, char *argv[]){
     long server_pid_value;
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
+    size_t version_num;
+    size_t doc_len;
     char buff[BUFF_LEN];
     
     doc = markdown_init();
@@ -185,46 +187,134 @@ int main(int argc, char *argv[]){
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
     printf("Username written.\n");
-    sleep(1);
     
-    // Read the server response.
+    // Now, read the permission, version number, 
+    // document length and document from the pipe.
+    char* document_content = NULL;
+
+    // Read permission.
     memset(buff, 0, sizeof(buff));
-    ssize_t bytes = read(read_fd, buff, BUFF_LEN);
-    printf("Bytes: %ld\n", bytes);
-    // printf("Got response:\n%s|END OF MESSAGE\n", buff);
-    if(strcmp(buff, "Reject UNAUTHORISED") == 0){
-        printf("Your identify is not authorised.\n");
+    int pos = 0;
+    char ch;
+    while(read(read_fd, &ch, 1) > 0 && ch != '\n') {
+        if(pos < BUFF_LEN - 1) {
+            buff[pos++] = ch;
+        }
+    }
+    buff[pos] = '\0';
+    strcpy(permission, buff);
+    printf("Got permission: %s\n", permission);
+    
+    // Check permission
+    if(strcmp(permission, "unauthorised") == 0) {
+        printf("Your identity is not authorised.\n");
         connecting = false;
-    }else{
+    } 
+    else {
         connecting = true;
+
+        // Read the document version
+        memset(buff, 0, sizeof(buff));
+        pos = 0;
+        while(read(read_fd, &ch, 1) > 0 && ch != '\n') {
+            if(pos < BUFF_LEN - 1) {
+                buff[pos++] = ch;
+            }
+        }
+        buff[pos] = '\0';
+        version_num = strtol(buff, NULL, 10);
+        doc->version_num = version_num;
+        printf("Got document version: %ld\n", version_num);
+
+        // Read document length.
+        memset(buff, 0, sizeof(buff));
+        pos = 0;
+        while(read(read_fd, &ch, 1) > 0 && ch != '\n') {
+            if(pos < BUFF_LEN - 1) {
+                buff[pos++] = ch;
+            }
+        }
+        buff[pos] = '\0';
+        doc_len = strtol(buff, NULL, 10);
+        doc->doc_len = doc_len;
+        printf("Got document length: %ld\n", doc_len);
+
+        // Read the document according to length.
+        if(doc_len > 0) {
+            document_content = malloc(doc_len + 1);
+            if(document_content == NULL) {
+                perror("Memory allocation failed");
+                interupted = true;
+            } else {
+                ssize_t total_read = 0;
+                ssize_t bytes_read;
+                
+                while(total_read < doc_len) {
+                    bytes_read = read(read_fd, document_content + total_read, doc_len - total_read);
+                    if(bytes_read <= 0) {
+                        perror("Failed to read document content");
+                        free(document_content);
+                        document_content = NULL;
+                        break;
+                    }
+                    total_read += bytes_read;
+                }
+                
+                if(document_content != NULL) {
+                    document_content[doc_len] = '\0';
+                    printf("Got document content (%ld bytes):\n%s\n", doc_len, document_content);
+                    
+                    if(doc->first_chunk != NULL && doc->first_chunk->content != NULL) {
+                        free(doc->first_chunk->content);
+                    }
+                    doc->first_chunk->content = document_content;
+                }
+            }
+        } 
+        else {
+            printf("Empty document.\n");
+        }
     }
 
-    // Resolve the response.
-    // Get permission.
-    printf("Got:\n%s", buff);
-    char* token = strtok(buff, "\n");
-    printf("Token: %p\n", token);
-    strcpy(permission, token);
-    printf("Got permission level: %s\n", permission);
-    // Get document version.
-    token = strtok(NULL, "\n");
-    printf("Token: %p\n", token);
-    doc->version_num = strtol(token, NULL, 10);
-    printf("Got document version: %ld\n", doc->version_num);
-    // Get document length.
-    token = strtok(NULL, "\n");
-    printf("Token: %p\n", token);
-    doc->doc_len = strtol(token, NULL, 10);
-    printf("Got document length: %ld\n", doc->doc_len);
-    // Get document content.
-    token = strtok(NULL, "\n");
-    printf("Token: %p\n", token);
-    if(token != NULL){
-        strcpy(doc->first_chunk->content, token);
-        printf("Got document content: %s\n", doc->first_chunk->content);
-    }else{
-        printf("Empty content.\n");
-    }
+    // // Read the server response.
+    // memset(buff, 0, sizeof(buff));
+    // ssize_t bytes = read(read_fd, buff, BUFF_LEN);
+    // printf("Bytes: %ld\n", bytes);
+    // // printf("Got response:\n%s|END OF MESSAGE\n", buff);
+    // if(strcmp(buff, "Reject UNAUTHORISED") == 0){
+    //     printf("Your identify is not authorised.\n");
+    //     connecting = false;
+    // }else{
+    //     connecting = true;
+    // }
+
+    // // Resolve the response.
+    // // Get permission.
+    // printf("Got:\n%s", buff);
+    // char* token = strtok(buff, "\n");
+    // printf("Token: %p\n", token);
+    // strcpy(permission, token);
+    // printf("Got permission level: %s\n", permission);
+    // // Get document version.
+    // token = strtok(NULL, "\n");
+    // printf("Token: %p\n", token);
+    // doc->version_num = strtol(token, NULL, 10);
+    // printf("Got document version: %ld\n", doc->version_num);
+    // // Get document length.
+    // token = strtok(NULL, "\n");
+    // printf("Token: %p\n", token);
+    // doc->doc_len = strtol(token, NULL, 10);
+    // printf("Got document length: %ld\n", doc->doc_len);
+    // // Get document content.
+    // token = strtok(NULL, "\n");
+    // printf("Token: %p\n", token);
+    // if(token != NULL){
+    //     printf("Got document content: %s\n", token);
+    //     doc->first_chunk->content = realloc(doc->first_chunk->content, strlen(token)+1);
+    //     strcpy(doc->first_chunk->content, token);
+    // }else{
+    //     printf("Empty content.\n");
+    // }
 
 
     // Create a thread to receive the server braodcast and update doc.
