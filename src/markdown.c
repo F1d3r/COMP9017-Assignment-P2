@@ -249,7 +249,7 @@ int markdown_horizontal_rule(document *doc, uint64_t version, size_t pos) {
         return INVALID_CURSOR_POS;
     }
     char* newline_symbol = (char*)malloc(sizeof(char)*6);
-    strcpy(newline_symbol, "\n---\n");
+    strcpy(newline_symbol, "---\n");
     markdown_insert(doc, version, pos, newline_symbol);
     free(newline_symbol);
     
