@@ -38,7 +38,7 @@ void handle_SIGINT(int sig){
 }
 
 void* broadcast_thread_func(void* arg){
-    printf("Broadcast listener thread craeted.\n");
+    // printf("Broadcast listener thread craeted.\n");
     int read_fd = *(int*)arg;
     char buff[BUFF_LEN];
 
@@ -79,7 +79,7 @@ void* broadcast_thread_func(void* arg){
                 break;
             }
 
-            // printf("Got broadcast:\n%s.\n", buff);
+            printf("%s", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
             pthread_mutex_lock(&log_lock);
@@ -142,8 +142,8 @@ int main(int argc, char *argv[]){
         }else{
             strcpy(username, argv[2]);
             // username[strlen(argv[2])] = '\0';
-            printf("Got username: %s\n", username);
-            printf("Got server pid: %ld\n", server_pid_value);
+            // printf("Got username: %s\n", username);
+            // printf("Got server pid: %ld\n", server_pid_value);
         }
     }
     // Get the server and self pid.
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]){
     sigwait(&signal_set, &sig);
 
     // Connection established.
-    printf("Successfully connected to the server.\n");
+    // printf("Successfully connected to the server.\n");
 
     // Open the pipes to communicate.
     char fifo_name1[BUFF_LEN];
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]){
     // Read the server response.
     memset(buff, 0, sizeof(buff));
     read(read_fd, buff, BUFF_LEN);
-    printf("Got response:\n%s|END OF MESSAGE\n", buff);
+    // printf("Got response:\n%s|END OF MESSAGE\n", buff);
     if(strcmp(buff, "Reject UNAUTHORISED") == 0){
         printf("Your identify is not authorised.\n");
         connecting = false;
@@ -198,26 +198,24 @@ int main(int argc, char *argv[]){
     // Resolve the response.
     // Get permission.
     char* token = strtok(buff, "\n");
-    printf("Token: %p\n", token);
+    // printf("Token: %p\n", token);
     strcpy(permission, token);
-    printf("Got permission level: %s\n", permission);
+    // printf("Got permission level: %s\n", permission);
     // Get document version.
     token = strtok(NULL, "\n");
-    printf("Token: %p\n", token);
+    // printf("Token: %p\n", token);
     doc->version_num = strtol(token, NULL, 10);
-    printf("Got document version: %ld\n", doc->version_num);
+    // printf("Got document version: %ld\n", doc->version_num);
     // Get document length.
     token = strtok(NULL, "\n");
-    printf("Token: %p\n", token);
+    // printf("Token: %p\n", token);
     doc->doc_len = strtol(token, NULL, 10);
-    printf("Got document length: %ld\n", doc->doc_len);
+    // printf("Got document length: %ld\n", doc->doc_len);
     // Get document content.
     token = strtok(NULL, "\n");
     if(token != NULL){
         strcpy(doc->first_chunk->content, token);
-        printf("Got document content: %s\n", doc->first_chunk->content);
-    }else{
-        printf("Content is empty: %s\n", doc->first_chunk->content);
+        // printf("Got document content: %s\n", doc->first_chunk->content);
     }
 
 
@@ -227,7 +225,7 @@ int main(int argc, char *argv[]){
         perror("Thread create failed.\n");
         interupted = true;
     }else{
-        printf("Start listening command input.\n");
+        // printf("Start listening command input.\n");
     }
 
 
