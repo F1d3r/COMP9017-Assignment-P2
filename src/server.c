@@ -127,6 +127,12 @@ void* thread_for_client(void* arg){
             printf("Doc len: %ld\n", doc->doc_len);
             printf("Doc content: %s\n", doc->first_chunk->content);
 
+
+            // TODO: write the content 4 times.
+            // TODO: write the content 4 times.
+            // TODO: write the content 4 times.
+            // TODO: write the content 4 times.
+            // TODO: write the content 4 times.
             // Write version number.
             snprintf(buff, sizeof(buff), "%s", permission);
             snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);

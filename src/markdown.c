@@ -42,7 +42,7 @@ void markdown_free(document *doc) {
 
 // === Edit Commands ===
 int markdown_insert(document *doc, uint64_t version, size_t pos, const char *content) {
-    if(version != doc->version_num){
+    if(version != doc->version_num + 1){
         printf("Version outdated: %ld|%ld\n", version, doc->version_num);
         return OUTDATED_VERSION;
     }

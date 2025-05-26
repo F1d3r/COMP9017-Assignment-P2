@@ -90,11 +90,11 @@ void* broadcast_thread_func(void* arg){
             // Check the number of edits before adding to log.
             if(new_log->edits_num != 0){
                 add_log(&doc_log, new_log);
+                
                 pthread_mutex_lock(&doc_lock);
                 int num_edit_processed = update_doc(doc, doc_log);
                 if(num_edit_processed != 0){
                     markdown_increment_version(doc);
-                    new_log->version_num ++;
                 }
                 pthread_mutex_unlock(&doc_lock);
             }else{
@@ -224,6 +224,7 @@ int main(int argc, char *argv[]){
         buff[pos] = '\0';
         version_num = strtol(buff, NULL, 10);
         doc->version_num = version_num;
+        doc_log->version_num = version_num;
         printf("Got document version: %ld\n", version_num);
 
         // Read document length.
@@ -275,47 +276,6 @@ int main(int argc, char *argv[]){
             printf("Empty document.\n");
         }
     }
-
-    // // Read the server response.
-    // memset(buff, 0, sizeof(buff));
-    // ssize_t bytes = read(read_fd, buff, BUFF_LEN);
-    // printf("Bytes: %ld\n", bytes);
-    // // printf("Got response:\n%s|END OF MESSAGE\n", buff);
-    // if(strcmp(buff, "Reject UNAUTHORISED") == 0){
-    //     printf("Your identify is not authorised.\n");
-    //     connecting = false;
-    // }else{
-    //     connecting = true;
-    // }
-
-    // // Resolve the response.
-    // // Get permission.
-    // printf("Got:\n%s", buff);
-    // char* token = strtok(buff, "\n");
-    // printf("Token: %p\n", token);
-    // strcpy(permission, token);
-    // printf("Got permission level: %s\n", permission);
-    // // Get document version.
-    // token = strtok(NULL, "\n");
-    // printf("Token: %p\n", token);
-    // doc->version_num = strtol(token, NULL, 10);
-    // printf("Got document version: %ld\n", doc->version_num);
-    // // Get document length.
-    // token = strtok(NULL, "\n");
-    // printf("Token: %p\n", token);
-    // doc->doc_len = strtol(token, NULL, 10);
-    // printf("Got document length: %ld\n", doc->doc_len);
-    // // Get document content.
-    // token = strtok(NULL, "\n");
-    // printf("Token: %p\n", token);
-    // if(token != NULL){
-    //     printf("Got document content: %s\n", token);
-    //     doc->first_chunk->content = realloc(doc->first_chunk->content, strlen(token)+1);
-    //     strcpy(doc->first_chunk->content, token);
-    // }else{
-    //     printf("Empty content.\n");
-    // }
-
 
     // Create a thread to receive the server braodcast and update doc.
     int result = pthread_create(&listen_broadcast, NULL, broadcast_thread_func, &read_fd);

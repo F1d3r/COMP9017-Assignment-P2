@@ -93,7 +93,7 @@ log* get_log(char* message){
     char* token = strtok(msg_cpy, "\n");
 
     if(token != NULL){
-        printf("Got version line: %s\n", token);
+        // printf("Got version line: %s\n", token);
         char* ver_line = (char*)malloc(sizeof(char)*strlen(token) + 1);
         strcpy(ver_line, token);
         char* ver_save_ptr;
@@ -110,7 +110,7 @@ log* get_log(char* message){
     // Handle every edit line.
     while(token != NULL){
         // Jump END line.
-        printf("Got line: %s\n", token);
+        // printf("Got line: %s\n", token);
         if(strcmp(token, "END") == 0){
             break;
         }
@@ -126,10 +126,10 @@ log* get_log(char* message){
 
         
         char* word = strtok_r(line, " ", &saveptr);
-        printf("Word: %s\n", word);
+        // printf("Word: %s\n", word);
         if(word != NULL && strcmp(word, "EDIT") == 0) {
 
-        printf("Word: %s\n", word);
+        // printf("Word: %s\n", word);
             // Get username
             word = strtok_r(NULL, " ", &saveptr);
             if(word != NULL) {
@@ -138,17 +138,17 @@ log* get_log(char* message){
 
             // Get the remaining part.
             char* remaining = strtok_r(NULL, "", &saveptr);
-        printf("Remaining: %s\n", remaining);
+        // printf("Remaining: %s\n", remaining);
             if(remaining != NULL) {
                 // Find the SUCCESS or Reject in the remaining.
                 char* success_pos = strstr(remaining, " SUCCESS");
                 char* reject_pos = strstr(remaining, " Reject");
                 
                 if(success_pos != NULL){
-        printf("Succ: %s\n", success_pos);
+        // printf("Succ: %s\n", success_pos);
                 }
                 if(reject_pos != NULL){
-        printf("Rej: %s\n", reject_pos);
+        // printf("Rej: %s\n", reject_pos);
                 }
                 if(success_pos != NULL) {
                     *success_pos = '\0';
@@ -162,17 +162,17 @@ log* get_log(char* message){
                     // Get the reject reason
                     char* reason_part = reject_pos + 8;
                     if(strlen(reason_part) > 0) {
-                        printf("Reject reason: %s\n", reason_part);
+                        // printf("Reject reason: %s\n", reason_part);
                         strcpy(reject_reason, reason_part);
                     }
                 }
             }
         }
-        printf("Parsed - User: %s, Command: %s, Result: %s", user, command, result);
-        if(strlen(reject_reason) > 0) {
-            printf(", Reject reason: %s", reject_reason);
-        }
-        printf("\n");
+        // printf("Parsed - User: %s, Command: %s, Result: %s", user, command, result);
+        // if(strlen(reject_reason) > 0) {
+        //     printf(", Reject reason: %s", reject_reason);
+        // }
+        // printf("\n");
 
         add_edit(&new_log, user, command, result, reject_reason);
         free(line);
