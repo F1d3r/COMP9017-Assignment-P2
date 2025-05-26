@@ -80,7 +80,7 @@ void* broadcast_thread_func(void* arg){
             }
 
             // Got broadcast:
-            // printf("%s", buff);
+            printf("Got broadcast:\n%s", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
             pthread_mutex_lock(&log_lock);
@@ -185,6 +185,7 @@ int main(int argc, char *argv[]){
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
     printf("Username written.\n");
+    sleep(1);
     
     // Read the server response.
     memset(buff, 0, sizeof(buff));
@@ -202,24 +203,27 @@ int main(int argc, char *argv[]){
     // Get permission.
     printf("Got:\n%s", buff);
     char* token = strtok(buff, "\n");
-    // printf("Token: %p\n", token);
+    printf("Token: %p\n", token);
     strcpy(permission, token);
-    // printf("Got permission level: %s\n", permission);
+    printf("Got permission level: %s\n", permission);
     // Get document version.
     token = strtok(NULL, "\n");
-    // printf("Token: %p\n", token);
+    printf("Token: %p\n", token);
     doc->version_num = strtol(token, NULL, 10);
-    // printf("Got document version: %ld\n", doc->version_num);
+    printf("Got document version: %ld\n", doc->version_num);
     // Get document length.
     token = strtok(NULL, "\n");
-    // printf("Token: %p\n", token);
+    printf("Token: %p\n", token);
     doc->doc_len = strtol(token, NULL, 10);
-    // printf("Got document length: %ld\n", doc->doc_len);
+    printf("Got document length: %ld\n", doc->doc_len);
     // Get document content.
     token = strtok(NULL, "\n");
+    printf("Token: %p\n", token);
     if(token != NULL){
         strcpy(doc->first_chunk->content, token);
-        // printf("Got document content: %s\n", doc->first_chunk->content);
+        printf("Got document content: %s\n", doc->first_chunk->content);
+    }else{
+        printf("Empty content.\n");
     }
 
 
