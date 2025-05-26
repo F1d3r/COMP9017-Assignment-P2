@@ -239,14 +239,14 @@ int update_doc(document* doc, log* doc_log){
                 }
             }
             else if(strcmp(command, "BLOCKQUOTE") == 0){
-                printf("Italicing document.\n");
+                printf("Blocking quote document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 if(markdown_blockquote(doc, last_log->version_num, pos) == 0){
                     num_edit_processed ++;
                 }
             }
             else if(strcmp(command, "CODE") == 0){
-                printf("Italicing document.\n");
+                printf("Coding document.\n");
                 size_t start = strtol(arg1, NULL, 10);
                 size_t end = strtol(arg2, NULL, 10);
                 if(markdown_code(doc, last_log->version_num, start, end) == 0){
@@ -254,9 +254,17 @@ int update_doc(document* doc, log* doc_log){
                 }
             }
             else if(strcmp(command, "HORIZONTAL_RULE") == 0){
-                printf("Italicing document.\n");
+                printf("Ruling document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 if(markdown_horizontal_rule(doc, last_log->version_num, pos) == 0){
+                    num_edit_processed ++;
+                }
+            }
+            else if(strcmp(command, "LINK") == 0){
+                printf("Linking document.\n");
+                size_t start = strtol(arg1, NULL, 10);
+                size_t end = strtol(arg2, NULL, 10);
+                if(markdown_link(doc, last_log->version_num, start, end, arg3) == 0){
                     num_edit_processed ++;
                 }
             }

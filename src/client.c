@@ -380,13 +380,18 @@ int main(int argc, char *argv[]){
             printf("Command now: %s\n", command_input);
             write(write_fd, command_input, CMD_LEN);
         }
-
         // LINK
         if(strcmp(command, "LINK") == 0){
-            if(arg3 == NULL){
-                printf("Invalid command.\n");
+            // Check command argument validation.
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_link(doc, arg1, arg2, arg3)){
+                pthread_mutex_unlock(&doc_lock);
                 continue;
             }
+            pthread_mutex_unlock(&doc_lock);
+
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
 
         }
     }

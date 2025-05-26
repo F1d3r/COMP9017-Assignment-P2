@@ -108,6 +108,14 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
         *arg2 = NULL;
         *arg3 = NULL;
     }
+    else if(strcmp(*command, "LINK") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        token = strtok(NULL, " ");
+        *arg2 = token;
+        token = strtok(NULL, "\n");
+        *arg3 = token;
+    }
     else{
         *arg1 = NULL;
         *arg2 = NULL;
@@ -243,7 +251,7 @@ bool check_command_newline(document* doc, char* arg1){
 
 
 bool check_command_heading(document* doc, char* arg1, char* arg2){
-    if(arg1 == NULL){
+    if(arg2 == NULL){
         printf("Invalid command.\n");
         return false;
     }
@@ -278,7 +286,7 @@ bool check_command_heading(document* doc, char* arg1, char* arg2){
 
 
 bool check_command_italic(document* doc, char* arg1, char* arg2){
-    if(arg1 == NULL){
+    if(arg2 == NULL){
         printf("Invalid command.\n");
         return false;
     }
@@ -345,7 +353,7 @@ bool check_command_blockquote(document* doc, char* arg1){
 
 
 bool check_command_code(document* doc, char* arg1, char* arg2){
-    if(arg1 == NULL){
+    if(arg2 == NULL){
         printf("Invalid command.\n");
         return false;
     }
@@ -402,6 +410,46 @@ bool check_command_horizontal(document* doc, char* arg1){
 
     // Check position validation.
     if(pos > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
+    printf("Valid argument.\n");
+    return true;
+}
+
+
+bool check_command_link(document* doc, char* arg1, char* arg2, char* arg3){
+    if(arg3 == NULL){
+        printf("Invalid command.\n");
+        return false;
+    }
+    size_t start = 0;
+    size_t end = 0;
+    // Check if the position index an integer.
+    if(!check_integer(arg1)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+    if(!check_integer(arg2)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+
+    start = strtol(arg1, NULL, 10);
+    end = strtol(arg2, NULL, 10);
+    printf("Got position start: %ld.\n", start);
+    printf("Got position end: %ld.\n", end);
+
+    // Check position validation.
+    if(start > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
+    if(end > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
+        return false;
+    }
+    if(start >= end){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }

@@ -26,4 +26,6 @@ bool check_command_code(document* doc, char* arg1, char* arg2);
 
 bool check_command_horizontal(document* doc, char* arg1);
 
+bool check_command_link(document* doc, char* arg1, char* arg2, char* arg3);
+
 #endif

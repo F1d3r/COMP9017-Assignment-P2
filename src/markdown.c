@@ -257,7 +257,33 @@ int markdown_horizontal_rule(document *doc, uint64_t version, size_t pos) {
 }
 
 int markdown_link(document *doc, uint64_t version, size_t start, size_t end, const char *url) {
-    (void)doc; (void)version; (void)start; (void)end; (void)url;
+    if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+        return OUTDATED_VERSION;
+    }
+    if(start > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    if(end > doc->doc_len+1){
+        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    if(start >= end){
+        printf("Invalid position: %ld|%ld\n", start, end);
+        return INVALID_CURSOR_POS;
+    }
+    char* start_symbol = (char*)malloc(sizeof(char)*2);
+    strcpy(start_symbol, "[");
+    char* end_symbol = (char*)malloc(sizeof(char)*(strlen(url)+4));
+    strcpy(end_symbol, "](");
+    strcpy(end_symbol+2, url);
+    strcpy(end_symbol+2+strlen(url), ")");
+    markdown_insert(doc, version, end, end_symbol);
+    markdown_insert(doc, version, start, start_symbol);
+    free(start_symbol);
+    free(end_symbol);
+    
     return SUCCESS;
 }
 
