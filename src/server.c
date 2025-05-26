@@ -261,20 +261,12 @@ void* thread_for_client(void* arg){
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                uint64_t len = strtol(arg2, NULL, 10);
                 pthread_mutex_lock(&log_lock);
                 log* last_log = doc_log;
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
-                    // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
-                    printf("Invalid position.\n");
-                    continue;
-                }
-                if(pos+len > doc->doc_len){
                     // Out of boundry.
                     add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
                     pthread_mutex_unlock(&log_lock);

@@ -175,10 +175,6 @@ bool check_command_delete(document* doc, char* arg1, char* arg2){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    if(pos + len > doc->doc_len){
-        printf("Invalid length index(out of boundry).\n");
-        return false;
-    }
     printf("Valid argument.\n");
     return true;
 }

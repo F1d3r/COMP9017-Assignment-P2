@@ -75,7 +75,7 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
         return INVALID_CURSOR_POS;
     }
     if(pos+len > doc->first_chunk->length){
-        return INVALID_CURSOR_POS;
+        len = doc->first_chunk->length - pos;
     }
     char* new_content = (char*)malloc(sizeof(char)*(strlen(doc->first_chunk->content)-len+1));
     strncpy(new_content, doc->next_version->first_chunk->content, pos);
