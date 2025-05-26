@@ -230,6 +230,14 @@ int update_doc(document* doc, log* doc_log){
                     num_edit_processed ++;
                 }
             }
+            else if(strcmp(command, "ITALIC") == 0){
+                printf("Italicing document.\n");
+                size_t start = strtol(arg1, NULL, 10);
+                size_t end = strtol(arg2, NULL, 10);
+                if(markdown_italic(doc, last_log->version_num, start, end) == 0){
+                    num_edit_processed ++;
+                }
+            }
         }
     }
 
