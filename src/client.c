@@ -79,7 +79,8 @@ void* broadcast_thread_func(void* arg){
                 break;
             }
 
-            printf("%s", buff);
+            // Got broadcast:
+            // printf("%s", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
             pthread_mutex_lock(&log_lock);
@@ -141,7 +142,8 @@ int main(int argc, char *argv[]){
             return 1;
         }else{
             strcpy(username, argv[2]);
-            // username[strlen(argv[2])] = '\0';
+            username[strlen(username)] = '\n';
+            username[strlen(username)] = '\0';
             // printf("Got username: %s\n", username);
             // printf("Got server pid: %ld\n", server_pid_value);
         }
@@ -168,25 +170,26 @@ int main(int argc, char *argv[]){
 
     // Send the SIGRTMIN with client pid.
     sigqueue(server_pid, SIGRTMIN, value);
-    sigwait(&signal_set, &sig);
-
-    // Connection established.
-    // printf("Successfully connected to the server.\n");
+    // sigwait(&signal_set, &sig);
+    pause();
 
     // Open the pipes to communicate.
     char fifo_name1[BUFF_LEN];
     char fifo_name2[BUFF_LEN];
     sprintf(fifo_name1, "FIFO_S2C_%d", pid);
-    int read_fd = open(fifo_name1, O_RDONLY);
     sprintf(fifo_name2, "FIFO_C2S_%d", pid);
+
     int write_fd = open(fifo_name2, O_WRONLY);
+    int read_fd = open(fifo_name1, O_RDONLY);
 
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
-
+    printf("Username written.\n");
+    
     // Read the server response.
     memset(buff, 0, sizeof(buff));
-    read(read_fd, buff, BUFF_LEN);
+    ssize_t bytes = read(read_fd, buff, BUFF_LEN);
+    printf("Bytes: %ld\n", bytes);
     // printf("Got response:\n%s|END OF MESSAGE\n", buff);
     if(strcmp(buff, "Reject UNAUTHORISED") == 0){
         printf("Your identify is not authorised.\n");
@@ -197,6 +200,7 @@ int main(int argc, char *argv[]){
 
     // Resolve the response.
     // Get permission.
+    printf("Got:\n%s", buff);
     char* token = strtok(buff, "\n");
     // printf("Token: %p\n", token);
     strcpy(permission, token);

@@ -67,6 +67,7 @@ void* thread_for_client(void* arg){
     char buff[BUFF_LEN];
     bool connecting = true;
     pid_t client_pid = *(pid_t*)arg;
+    printf("Hello, %d\n", client_pid);
 
 
     // Create fifos to communicate with the client.
@@ -83,7 +84,7 @@ void* thread_for_client(void* arg){
     // Add S2C pipe into array.
 
     sprintf(fifo_name2, "FIFO_C2S_%d", client_pid);
-    // printf("C2S FIFO: %s.\n", fifo_name2);
+    printf("C2S FIFO: %s.\n", fifo_name2);
     if(access(fifo_name2, F_OK) == 0){
         unlink(fifo_name2);
     }
@@ -93,17 +94,19 @@ void* thread_for_client(void* arg){
 
     // Send the response to the client.
     kill(client_pid, SIGRTMIN+1);
-    // printf("Connection establish response sent to the client: %d.\n", client_pid);
+    printf("Connection establish response sent to the client: %d.\n", client_pid);
 
     // Open the pipes to communicate with the client.
-    int write_fd = open(fifo_name1, O_WRONLY);
     int read_fd = open(fifo_name2, O_RDONLY);
-    // printf("Thread listening on %d.\n", read_fd);
-    // printf("Thread writing on %d.\n", write_fd);
-
+    printf("Thread listening on %d.\n", read_fd);
+    
     // Read the username written by the client.
     read(read_fd, username, BUFF_LEN);
-    // printf("Got username from pipe: %s.\n", username);
+    username[strlen(username)-1] = '\0';
+    printf("Got username from pipe: %s.\n", username);
+
+    int write_fd = open(fifo_name1, O_WRONLY);
+    printf("Thread writing on %d.\n", write_fd);
 
     // Verify user.
     bool user_exist = false;
@@ -120,9 +123,9 @@ void* thread_for_client(void* arg){
             pthread_mutex_lock(&doc_lock);
             // Check document.
             // char* doc_content = markdown_flatten(doc);
-            // printf("Doc version: %ld\n", doc->version_num);
-            // printf("Doc len: %ld\n", doc->doc_len);
-            // printf("Doc content: %s\n", doc->first_chunk->content);
+            printf("Doc version: %ld\n", doc->version_num);
+            printf("Doc len: %ld\n", doc->doc_len);
+            printf("Doc content: %s\n", doc->first_chunk->content);
 
             // Write version number.
             snprintf(buff, sizeof(buff), "%s", permission);
@@ -734,6 +737,7 @@ void* broadcast_thread_func(void* arg) {
 
 
 void handle_SIGRTMIN(int sig, siginfo_t* info, void* context){
+    printf("Got a SIGRTMIN.\n");
     // Check client amount.
     if(clients_count >= MAX_CLIENTS){
         printf("Exceeded the maximum client amount.\n");

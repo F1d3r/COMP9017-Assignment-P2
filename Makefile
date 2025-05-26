@@ -7,10 +7,10 @@ all: server client
 all: server client
 
 server: src/server.c src/document.c src/helper.c src/markdown.c src/user.c
-	$(CC) $(CFLAGS) -o server src/server.c src/document.c src/helper.c src/markdown.c src/user.c
+	$(CC) $(CFLAGS) -g -o server src/server.c src/document.c src/helper.c src/markdown.c src/user.c
 
 client: src/client.c src/document.c src/helper.c src/markdown.c src/user.c
-	$(CC) $(CFLAGS) -o client src/client.c src/document.c src/helper.c src/markdown.c src/user.c
+	$(CC) $(CFLAGS) -g -o client src/client.c src/document.c src/helper.c src/markdown.c src/user.c
 
 markdown.o: src/markdown.c src/document.c src/helper.c src/user.c
 	$(CC) $(CFLAGS) -c src/document.c src/helper.c src/user.c src/markdown.c
