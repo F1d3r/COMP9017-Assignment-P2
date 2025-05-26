@@ -70,7 +70,6 @@ void* broadcast_thread_func(void* arg){
             memset(buff, 0, sizeof(buff));
             ssize_t bytes_read = read(read_fd, buff, BUFF_LEN);
             if(bytes_read == 0){
-                printf("Server closed conncetion.\n");
                 connecting = false;
                 break;
             } 
@@ -242,9 +241,11 @@ int main(int argc, char *argv[]){
         // Make sure the command is valid formatting.
         // DISCONNECT
         if(strcmp(command, "DISCONNECT\n")==0){
-            printf("Disconnecting\n");
             write(write_fd, command, CMD_LEN);
-            sleep(1);
+            interupted = true;
+            // Waiting for server closing the pipe.
+            char dummy_buffer[1];
+            ssize_t result = read(read_fd, dummy_buffer, 1);
             continue;
         }
         // DOC
@@ -298,6 +299,10 @@ int main(int argc, char *argv[]){
 
         }
     }
+
+    
+
+
 
     markdown_free(doc);
     log_free(doc_log);
