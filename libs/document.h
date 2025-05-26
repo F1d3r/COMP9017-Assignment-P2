@@ -12,7 +12,6 @@
  */
 
 typedef struct chunk{
-    // TODO
     uint32_t offset;
     uint32_t length;
     char* content;
@@ -21,11 +20,10 @@ typedef struct chunk{
 } chunk;
 
 typedef struct document{
-    // TODO
     uint64_t version_num;
     uint64_t doc_len;
     struct chunk* first_chunk;
-    struct document* next_version;
+    struct log* log_head;
 } document;
 
 typedef struct edit{
@@ -35,17 +33,12 @@ typedef struct edit{
     char* reject_reason;
 } edit;
 
-
 typedef struct log{
     uint64_t version_num;
-    uint64_t current_ver_len;
-    edit** edits;
+    edit** edits;   // edit* array
     int edits_num;
     struct log* next_log;
 }log;
-
-
-int update_doc(document* doc, log* doc_log);
 
 void print_log(log* doc_log);
 

@@ -32,7 +32,6 @@ void print_log(log* doc_log){
 log* init_log(){
     log* log_head = (log*)malloc(sizeof(log));
     log_head->version_num = 0;
-    log_head->current_ver_len = 0;
     log_head->edits_num = 0;
     log_head->edits = NULL;
     log_head->next_log = NULL;
@@ -75,7 +74,14 @@ void add_log(log** log_head, log* new_log){
     while(last_log->next_log != NULL){
         last_log = last_log->next_log;
     }
-    last_log->next_log = new_log;
+    // Copy the edits if version number is the same.
+    if(last_log->version_num == new_log->version_num){
+        last_log->edits = new_log->edits;
+        last_log->edits_num = new_log->edits_num;
+        free(new_log);
+    }else{
+        last_log->next_log = new_log;
+    }
     return;
 }
 
@@ -93,7 +99,7 @@ log* get_log(char* message){
     char* token = strtok(msg_cpy, "\n");
 
     if(token != NULL){
-        // printf("Got version line: %s\n", token);
+        printf("Got version line: %s\n", token);
         char* ver_line = (char*)malloc(sizeof(char)*strlen(token) + 1);
         strcpy(ver_line, token);
         char* ver_save_ptr;
@@ -126,10 +132,10 @@ log* get_log(char* message){
 
         
         char* word = strtok_r(line, " ", &saveptr);
-        // printf("Word: %s\n", word);
+        // printf("Word: %s|\n", word);
         if(word != NULL && strcmp(word, "EDIT") == 0) {
 
-        // printf("Word: %s\n", word);
+        // printf("Word: %s|\n", word);
             // Get username
             word = strtok_r(NULL, " ", &saveptr);
             if(word != NULL) {
@@ -181,107 +187,6 @@ log* get_log(char* message){
     // Free copied message.
     free(msg_cpy);
     return new_log;
-}
-
-
-// Update the document according to the edits in the latest log.
-int update_doc(document* doc, log* doc_log){
-    int num_edit_processed = 0;
-    log* last_log = doc_log;
-    while(last_log->next_log != NULL){
-        last_log = last_log->next_log;
-    }
-    for(int i = 0; i < last_log->edits_num; i ++){
-        // Only process success commands.
-        if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
-            char command_input[CMD_LEN];
-            strcpy(command_input, last_log->edits[i]->command);
-            char* command = NULL;
-            char* arg1 = NULL;
-            char* arg2 = NULL;
-            char* arg3 = NULL;
-            resolve_command(command_input, &command, &arg1, &arg2, &arg3);
-
-            if(strcmp(command, "INSERT") == 0){
-                printf("Inserting to document.\n");
-                size_t pos = strtol(arg1, NULL, 10);
-                if(markdown_insert(doc, last_log->version_num, pos, arg2) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "DEL") == 0){
-                printf("Deleting from document.\n");
-                size_t pos = strtol(arg1, NULL, 10);
-                size_t len = strtol(arg2, NULL, 10);
-                if(markdown_delete(doc, last_log->version_num, pos, len) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "BOLD") == 0){
-                printf("Bolding document.\n");
-                size_t pos1 = strtol(arg1, NULL, 10);
-                size_t pos2 = strtol(arg2, NULL, 10);
-                if(markdown_bold(doc, last_log->version_num, pos1, pos2) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "NEWLINE") == 0){
-                printf("Newline document.\n");
-                size_t pos = strtol(arg1, NULL, 10);
-                if(markdown_newline(doc, last_log->version_num, pos) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "HEADING") == 0){
-                printf("Newline document.\n");
-                size_t level = strtol(arg1, NULL, 10);
-                size_t pos = strtol(arg2, NULL, 10);
-                if(markdown_heading(doc, last_log->version_num, level, pos) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "ITALIC") == 0){
-                printf("Italicing document.\n");
-                size_t start = strtol(arg1, NULL, 10);
-                size_t end = strtol(arg2, NULL, 10);
-                if(markdown_italic(doc, last_log->version_num, start, end) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "BLOCKQUOTE") == 0){
-                printf("Blocking quote document.\n");
-                size_t pos = strtol(arg1, NULL, 10);
-                if(markdown_blockquote(doc, last_log->version_num, pos) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "CODE") == 0){
-                printf("Coding document.\n");
-                size_t start = strtol(arg1, NULL, 10);
-                size_t end = strtol(arg2, NULL, 10);
-                if(markdown_code(doc, last_log->version_num, start, end) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "HORIZONTAL_RULE") == 0){
-                printf("Ruling document.\n");
-                size_t pos = strtol(arg1, NULL, 10);
-                if(markdown_horizontal_rule(doc, last_log->version_num, pos) == 0){
-                    num_edit_processed ++;
-                }
-            }
-            else if(strcmp(command, "LINK") == 0){
-                printf("Linking document.\n");
-                size_t start = strtol(arg1, NULL, 10);
-                size_t end = strtol(arg2, NULL, 10);
-                if(markdown_link(doc, last_log->version_num, start, end, arg3) == 0){
-                    num_edit_processed ++;
-                }
-            }
-        }
-    }
-
-    return num_edit_processed;
 }
 
 

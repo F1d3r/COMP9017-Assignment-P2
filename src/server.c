@@ -29,10 +29,7 @@ double server_time_interval;
 User** users;
 Client** clients;
 document* doc;
-log* doc_log;
-pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[MAX_CLIENTS];
 pthread_t broadcast_thread;
@@ -62,7 +59,7 @@ void broadcast_to_all_clients(const char* message) {
 void* thread_for_client(void* arg){
     // Resolve the client pid. As a local variable.
     char username[BUFF_LEN];
-    char permission[BUFF_LEN];
+    char permission[10];
     char command_input[CMD_LEN];
     char buff[BUFF_LEN];
     bool connecting = true;
@@ -74,23 +71,23 @@ void* thread_for_client(void* arg){
     char fifo_name1[BUFF_LEN];
     char fifo_name2[BUFF_LEN];
     sprintf(fifo_name1, "FIFO_S2C_%d", client_pid);
+    sprintf(fifo_name2, "FIFO_C2S_%d", client_pid);
     // printf("S2C FIFO: %s.\n", fifo_name1);
-    if(access(fifo_name1, F_OK) == 0){
-        unlink(fifo_name1);
-    }
+    // printf("C2S FIFO: %s.\n", fifo_name2);
+    
     if(mkfifo(fifo_name1, 0666) < 0){
         perror("Failed to create pipe.\n");
-    }
-    // Add S2C pipe into array.
-
-    sprintf(fifo_name2, "FIFO_C2S_%d", client_pid);
-    printf("C2S FIFO: %s.\n", fifo_name2);
-    if(access(fifo_name2, F_OK) == 0){
-        unlink(fifo_name2);
     }
     if(mkfifo(fifo_name2, 0666) < 0){
         perror("Failed to create pipe.\n");
     }
+
+    // Sleep to wait the pipe create.
+    // struct timespec ts;
+    // ts.tv_sec = 0;
+    // ts.tv_nsec = 10000000;
+    // nanosleep(&ts, NULL);
+    sleep(1);
 
     // Send the response to the client.
     union sigval value;
@@ -101,7 +98,9 @@ void* thread_for_client(void* arg){
 
     // Open the pipes to communicate with the client.
     int read_fd = open(fifo_name2, O_RDONLY);
+    int write_fd = open(fifo_name1, O_WRONLY);
     printf("Thread listening on %d.\n", read_fd);
+    printf("Thread writing on %d.\n", write_fd);
     
     // Read the username written by the client.
     ssize_t bytes = read(read_fd, username, BUFF_LEN);
@@ -113,8 +112,6 @@ void* thread_for_client(void* arg){
     username[strlen(username)-1] = '\0';
     printf("Got username from pipe: %s.\n", username);
 
-    int write_fd = open(fifo_name1, O_WRONLY);
-    printf("Thread writing on %d.\n", write_fd);
 
     // Verify user.
     bool user_exist = false;
@@ -124,11 +121,9 @@ void* thread_for_client(void* arg){
             // Get the permission level of the matched user.
             user_exist = true;
             strcpy(permission, users[i]->permission_level);
-            permission[strlen(permission)] = '\n';
-            permission[strlen(permission)] = '\0';
 
             // Write document details to the pipe.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             // Check document.
             // char* doc_content = markdown_flatten(doc);
             printf("Doc version: %ld\n", doc->version_num);
@@ -142,15 +137,17 @@ void* thread_for_client(void* arg){
             // TODO: write the content 4 times.
             // TODO: write the content 4 times.
             // Write version number.
-            snprintf(buff, sizeof(buff), "%s", permission);
-            snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->version_num);
-            snprintf(buff+strlen(buff), sizeof(buff), "%lu\n", doc->doc_len);
-            snprintf(buff+strlen(buff), sizeof(buff), "%s", doc->first_chunk->content);
+            memset(buff, 0, sizeof(buff));
+            snprintf(buff, sizeof(buff), "%s\n%lu\n%lu\n%s", 
+                    permission,
+                    doc->version_num,
+                    doc->doc_len,
+                    doc->first_chunk->content);
             // printf("Message payload:\n%s", buff);
             write(write_fd, buff, strlen(buff));
 
             // free(doc_content);
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
             break;
         }
     }
@@ -179,8 +176,8 @@ void* thread_for_client(void* arg){
     struct timeval timeout;
     while(connecting){
         // Set timeout for checking interupted. Prevent blocking.
+        timeout.tv_sec = 0;
         timeout.tv_usec = 500000;
-        timeout.tv_usec = 0;
         FD_ZERO(&readfds);
         FD_SET(read_fd, &readfds);
 
@@ -210,7 +207,7 @@ void* thread_for_client(void* arg){
                 connecting = false;
                 break;
             }
-            // printf("Got command: %s from client: %d.\n", command_input, client_pid);
+            printf("Got command: %s from client: %d.\n", command_input, client_pid);
             char temp[CMD_LEN];
             strcpy(temp, command_input);
 
@@ -231,36 +228,36 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = doc->log_head;
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "DEL") == 0){
                 // Remove the last '\n';
@@ -269,34 +266,34 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "BOLD") == 0){
                 // Remove the last '\n';
@@ -305,9 +302,9 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
@@ -315,32 +312,32 @@ void* thread_for_client(void* arg){
                 // Check position
                 uint64_t pos1 = strtol(arg1, NULL, 10);
                 uint64_t pos2 = strtol(arg2, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos1 > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(pos2 > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "NEWLINE") == 0){
                 // Remove the last '\n';
@@ -349,34 +346,34 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "HEADING") == 0){
                 // Remove the last '\n';
@@ -385,9 +382,9 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
@@ -395,32 +392,32 @@ void* thread_for_client(void* arg){
                 // Check position
                 uint64_t level = strtol(arg1, NULL, 10);
                 uint64_t pos = strtol(arg2, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(level < 1 || level > 3){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "ITALIC") == 0){
                 // Remove the last '\n';
@@ -429,9 +426,9 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
@@ -439,39 +436,39 @@ void* thread_for_client(void* arg){
                 // Check position
                 uint64_t start = strtol(arg1, NULL, 10);
                 uint64_t end = strtol(arg2, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(start >= doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(end > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(start >= end){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "BLOCKQUOTE") == 0){
                 // Remove the last '\n';
@@ -480,34 +477,34 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "CODE") == 0){
                 // Remove the last '\n';
@@ -516,9 +513,9 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
@@ -526,39 +523,39 @@ void* thread_for_client(void* arg){
                 // Check position
                 uint64_t start = strtol(arg1, NULL, 10);
                 uint64_t end = strtol(arg2, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(start >= doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(end > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(start >= end){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "HORIZONTAL_RULE") == 0){
                 // Remove the last '\n';
@@ -567,34 +564,34 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
 
                 // Check position
                 uint64_t pos = strtol(arg1, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(pos > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
             else if(strcmp(command, "LINK") == 0){
                 // Remove the last '\n';
@@ -603,9 +600,9 @@ void* thread_for_client(void* arg){
                 // Check permission.
                 if(strcmp(permission, "write\n") != 0){
                     // Unauthorised.
-                    pthread_mutex_lock(&log_lock);
-                    add_edit(&doc_log, username, command_input, "Reject", "UNAUTHORISED");
-                    pthread_mutex_unlock(&log_lock);
+                    pthread_mutex_lock(&lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
+                    pthread_mutex_unlock(&lock);
                     printf("No permission.\n");
                     continue;
                 }
@@ -613,39 +610,39 @@ void* thread_for_client(void* arg){
                 // Check position
                 uint64_t start = strtol(arg1, NULL, 10);
                 uint64_t end = strtol(arg2, NULL, 10);
-                pthread_mutex_lock(&log_lock);
-                log* last_log = doc_log;
+                pthread_mutex_lock(&lock);
+                log* last_log = (doc->log_head);
                 while(last_log->next_log != NULL){
                     last_log = last_log->next_log;
                 }
                 if(start > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(end > doc->doc_len){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
                 if(start >= end){
                     // Out of boundry.
-                    add_edit(&doc_log, username, command_input, "Reject", "INVALID_POSITION");
-                    pthread_mutex_unlock(&log_lock);
+                    add_edit(&(doc->log_head), username, command_input, "Reject", "INVALID_POSITION");
+                    pthread_mutex_unlock(&lock);
                     printf("Invalid position.\n");
                     continue;
                 }
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_unlock(&lock);
                 printf("The command is valid!\n");
 
                 // Then write the command into log.
-                pthread_mutex_lock(&log_lock);
-                add_edit(&doc_log, username, command_input, "SUCCESS", NULL);
-                pthread_mutex_unlock(&log_lock);
+                pthread_mutex_lock(&lock);
+                add_edit(&(doc->log_head), username, command_input, "SUCCESS", NULL);
+                pthread_mutex_unlock(&lock);
             }
         }
         
@@ -691,24 +688,18 @@ void* broadcast_thread_func(void* arg) {
         
         // Check server status.
         if(interupted) break;
-
-        // Update local documents according to the success log edits.
-        pthread_mutex_lock(&doc_lock);
-        pthread_mutex_lock(&log_lock);
-        int num_edit_processed = update_doc(doc, doc_log);
-        pthread_mutex_unlock(&doc_lock);
-        
+        pthread_mutex_lock(&lock);
 
         // Build the message to broadcast.
         char broadcast_message[BUFF_LEN];
         // Prepare the message.
-        log* last_log = doc_log;
+        log* last_log = (doc->log_head);
         while(last_log->next_log != NULL){
             last_log = last_log->next_log;
         }
         sprintf(broadcast_message, "Version %ld\n", last_log->version_num);
         for(int i = 0; i < last_log->edits_num; i++){
-            sprintf(broadcast_message+strlen(broadcast_message), "Edit %s %s %s", 
+            sprintf(broadcast_message+strlen(broadcast_message), "EDIT %s %s %s", 
             last_log->edits[i]->user, last_log->edits[i]->command, last_log->edits[i]->result);
 
             if(last_log->edits[i]->reject_reason != NULL){
@@ -725,29 +716,31 @@ void* broadcast_thread_func(void* arg) {
         broadcast_to_all_clients(broadcast_message);
         // printf("Broadcasted log to all clients\n");
 
+        // Update local documents according to the success log edits.
+        markdown_increment_version(doc);
+
         // Make a new log. If there are any commands.
         if(last_log->edits_num != 0){
             log* new_log = init_log();
             // Check all commands in previous time interval.
             // If there is at least one success, increase the version number.
-            if(num_edit_processed != 0){
-                new_log->version_num = last_log->version_num+1;
-                markdown_increment_version(doc);
-            }else{
-                new_log->version_num = last_log->version_num;
+            for(int i = 0; i < last_log->edits_num; i++){
+                if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+                    new_log->version_num = last_log->version_num+1;
+                    break;
+                }
             }
             // Add the new log into the log list.
-            add_log(&doc_log, new_log);
+            add_log(&(doc->log_head), new_log);
         }
         
 
-        pthread_mutex_unlock(&log_lock);
+        pthread_mutex_unlock(&lock);
 
         
     }
     return NULL;
 }
-
 
 
 void handle_SIGRTMIN(int sig, siginfo_t* info, void* context){
@@ -765,10 +758,6 @@ void handle_SIGRTMIN(int sig, siginfo_t* info, void* context){
     pid_t* client_pid_ptr = malloc(sizeof(pid_t));
     *client_pid_ptr = client_pid;
 
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
-    // TODO Change the threads array logic here.
     if(pthread_create(&threads[clients_count], NULL, 
         thread_for_client, client_pid_ptr) != 0){
         // Handle thread craetion error.
@@ -793,9 +782,6 @@ void handle_SIGINT(int sig){
 int main(int argc, char *argv[]){
     // Initialize the document.
     doc = markdown_init();
-    doc_log = init_log();
-    markdown_print(doc, stdout);
-    printf("\n");
 
     // Server PID.  
     pid_t server_pid = getpid();
@@ -806,14 +792,12 @@ int main(int argc, char *argv[]){
         printf("Please input the server time interval as the argument.\n");
         return 1;
     }
-
     // Get the server time interval.
     server_time_interval = strtod(argv[1], NULL);
     // printf("Got the time interval: %f.\n", server_time_interval);
 
-
     // Setup the valid users.
-    FILE* roles = fopen("../roles.txt", "r");
+    FILE* roles = fopen("roles.txt", "r");
     if(!roles){
         perror("Failed to open role file.\n");
         return 1;
@@ -837,12 +821,12 @@ int main(int argc, char *argv[]){
         total_user ++;
     }
 
+
     // Create thread for broadcasting.
     if(pthread_create(&broadcast_thread, NULL, broadcast_thread_func, NULL) != 0) {
         perror("Failed to create timer thread");
         return 1;
     }
-
 
     // Set interupt handler.
     signal(SIGINT, handle_SIGINT);
@@ -852,31 +836,22 @@ int main(int argc, char *argv[]){
     sa.sa_sigaction = handle_SIGRTMIN;
     sigaction(SIGRTMIN, &sa, NULL);
 
-    // // Clear the signal set.
-    // sigemptyset(&sa.sa_mask);
-    // // Mask the SIGRTMIN during the signal handler processing.
-    // sigaddset(&sa.sa_mask, SIGRTMIN);
-
-
-    // sigset_t mask;
-    // sigemptyset(&mask);
-    // sigaddset(&mask, SIGRTMIN);
     char input_buff[BUFF_LEN];
     while (!interupted) {
         fgets(input_buff, sizeof(input_buff), stdin);
         if(strcmp(input_buff, "QUIT\n") == 0){
             handle_SIGINT(SIGINT);
         }else if(strcmp(input_buff, "DOC?\n") == 0){
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             markdown_print(doc, stdout);
             printf("----------\n");
             printf("\n");
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
         }else if(strcmp(input_buff, "LOG?\n") == 0){
-            pthread_mutex_lock(&log_lock);
-            print_log(doc_log);
+            pthread_mutex_lock(&lock);
+            print_log((doc->log_head));
             printf("----------\n");
-            pthread_mutex_unlock(&log_lock);
+            pthread_mutex_unlock(&lock);
         }else{
             // printf("Invalid command.\n");
         }
@@ -890,11 +865,9 @@ int main(int argc, char *argv[]){
         pthread_join(threads[i], NULL);
     }
 
-
     // Free the users.
     destroy_users(users, total_user);
     markdown_free(doc);
-    log_free(doc_log);
 
     return 0;
 }

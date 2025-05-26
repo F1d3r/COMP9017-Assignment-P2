@@ -21,21 +21,21 @@
 volatile int interupted = 0;
 
 document* doc;
-log* doc_log;
-pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 bool connecting = false;
 
 
-void handle_SIGRTMIN(int sig){
+void handle_SIGRTMIN(){
     printf("Server responses. Establish connection.\n");
 }
 
-void handle_SIGINT(int sig){
+void handle_SIGINT(){
     printf("Got interrupted.\n");
     interupted = 1;
 }
+
+
 
 void* broadcast_thread_func(void* arg){
     // printf("Broadcast listener thread craeted.\n");
@@ -81,29 +81,30 @@ void* broadcast_thread_func(void* arg){
 
             // Got broadcast:
             printf("Got broadcast:\n%s", buff);
-            // Then resolve the broadcast message, 
-            // to update the log, and local document.
-            pthread_mutex_lock(&log_lock);
+            pthread_mutex_lock(&lock);
+            // Resolve the broadcast to get a new log.
             log* new_log = get_log(buff);
-            // add_log(&doc_log, new_log);
+            printf("Log get:\n");
+            print_log(new_log);
 
             // Check the number of edits before adding to log.
             if(new_log->edits_num != 0){
-                add_log(&doc_log, new_log);
-                
-                pthread_mutex_lock(&doc_lock);
-                int num_edit_processed = update_doc(doc, doc_log);
-                if(num_edit_processed != 0){
-                    markdown_increment_version(doc);
-                }
-                pthread_mutex_unlock(&doc_lock);
-            }else{
+                // Add log.
+                add_log(&(doc->log_head), new_log);
+                printf("New log:\n");
+                print_log(doc->log_head);
+                // Then update the document.
+                markdown_increment_version(doc);
+            }
+            // No edit(success/reject) made in this broadcast. 
+            // No need to update log.
+            else{
                 if(new_log->edits != NULL){
                     free(new_log->edits);
                 }
                 free(new_log);
             }
-            pthread_mutex_unlock(&log_lock);
+            pthread_mutex_unlock(&lock);
                 
             
         }
@@ -115,7 +116,6 @@ void* broadcast_thread_func(void* arg){
 
 
 int main(int argc, char *argv[]){
-    // Check input arguments.
     long server_pid_value;
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
@@ -124,10 +124,10 @@ int main(int argc, char *argv[]){
     char buff[BUFF_LEN];
     
     doc = markdown_init();
-    doc_log = init_log();
-
     pthread_t listen_broadcast;
 
+    
+    // Check input arguments.
     if(argc != 3){
         printf("Please provide the server PID and your username.\n");
         return 1;
@@ -144,10 +144,9 @@ int main(int argc, char *argv[]){
             return 1;
         }else{
             strcpy(username, argv[2]);
-            username[strlen(username)] = '\n';
-            username[strlen(username)] = '\0';
-            // printf("Got username: %s\n", username);
-            // printf("Got server pid: %ld\n", server_pid_value);
+            strcat(username, "\n");
+            printf("Got username: %s|", username);
+            printf("Got server pid: %ld|", server_pid_value);
         }
     }
     // Get the server and self pid.
@@ -158,21 +157,15 @@ int main(int argc, char *argv[]){
     signal(SIGINT, handle_SIGINT);
     // Register Runtime Signal handler.
     struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
+    sa.sa_flags = 0;
     sa.sa_handler = handle_SIGRTMIN;
     sigaction(SIGRTMIN+1, &sa, NULL);
-    
-    sigset_t signal_set;
-    int sig;
-    sigemptyset(&signal_set);
-    sigaddset(&signal_set, SIGRTMIN+1);
 
     // Send its pid to the server as a signal value.
     union sigval value;
     value.sival_int = pid;
     // Send the SIGRTMIN with client pid.
     sigqueue(server_pid, SIGRTMIN, value);
-    // sigwait(&signal_set, &sig);
     pause();
 
     // Open the pipes to communicate.
@@ -182,11 +175,21 @@ int main(int argc, char *argv[]){
     sprintf(fifo_name2, "FIFO_C2S_%d", pid);
 
     int write_fd = open(fifo_name2, O_WRONLY);
-    int read_fd = open(fifo_name1, O_RDONLY);
-
+    if(write_fd == -1) {
+        perror("Failed to open write FIFO");
+        return 1;
+    }
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
     printf("Username written.\n");
+
+    int read_fd = open(fifo_name1, O_RDONLY);
+    if(read_fd == -1) {
+        perror("Failed to open read FIFO");
+        close(write_fd);
+        return 1;
+    }
+
     
     // Now, read the permission, version number, 
     // document length and document from the pipe.
@@ -206,7 +209,7 @@ int main(int argc, char *argv[]){
     printf("Got permission: %s\n", permission);
     
     // Check permission
-    if(strcmp(permission, "unauthorised") == 0) {
+    if(strcmp(permission, "Reject UNAUTHORISED") == 0) {
         printf("Your identity is not authorised.\n");
         connecting = false;
     } 
@@ -224,7 +227,6 @@ int main(int argc, char *argv[]){
         buff[pos] = '\0';
         version_num = strtol(buff, NULL, 10);
         doc->version_num = version_num;
-        doc_log->version_num = version_num;
         printf("Got document version: %ld\n", version_num);
 
         // Read document length.
@@ -261,14 +263,23 @@ int main(int argc, char *argv[]){
                     total_read += bytes_read;
                 }
                 
+                // If document content read.
                 if(document_content != NULL) {
+                    // Remove last '\n'
                     document_content[doc_len] = '\0';
                     printf("Got document content (%ld bytes):\n%s\n", doc_len, document_content);
                     
-                    if(doc->first_chunk != NULL && doc->first_chunk->content != NULL) {
-                        free(doc->first_chunk->content);
+                    if(doc->first_chunk != NULL){
+                        if(doc->first_chunk->content != NULL){
+                            free(doc->first_chunk->content);
+                        }
+
+                        doc->first_chunk->content = document_content;
+                        doc->first_chunk->length = doc_len;
+                    } else{
+                        free(document_content);
                     }
-                    doc->first_chunk->content = document_content;
+                        
                 }
             }
         } 
@@ -277,7 +288,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    // Create a thread to receive the server braodcast and update doc.
+    // Create thread for listening broadcast.
     int result = pthread_create(&listen_broadcast, NULL, broadcast_thread_func, &read_fd);
     if(result != 0){
         perror("Thread create failed.\n");
@@ -287,8 +298,6 @@ int main(int argc, char *argv[]){
     }
 
 
-    // When the client is not interupted.
-    // Keeps listening from the user input for commands.
     while((!interupted) && connecting){
         char command_input[CMD_LEN];
         char temp[CMD_LEN];
@@ -329,148 +338,144 @@ int main(int argc, char *argv[]){
         }
         // LOG
         else if(strcmp(command, "LOG?\n") == 0){
-            print_log(doc_log);
+            print_log(doc->log_head);
             printf("----------\n");
         }
         // INSERT
         else if(strcmp(command, "INSERT") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_insert(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // DELETE
         else if(strcmp(command, "DEL") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_delete(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // BOLD
         else if(strcmp(command, "BOLD") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_bold(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // NEWLINE
         else if(strcmp(command, "NEWLINE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_newline(doc, arg1)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // NEWLINE
         else if(strcmp(command, "HEADING") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_heading(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // ITALIC
         else if(strcmp(command, "ITALIC") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_italic(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // BLOCKQUOTE
         else if(strcmp(command, "BLOCKQUOTE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_blockquote(doc, arg1)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // CODE
         else if(strcmp(command, "CODE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_code(doc, arg1, arg2)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // HORIZONTAL_RULE
         else if(strcmp(command, "HORIZONTAL_RULE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_horizontal(doc, arg1)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
         }
         // LINK
         if(strcmp(command, "LINK") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&doc_lock);
+            pthread_mutex_lock(&lock);
             if(!check_command_link(doc, arg1, arg2, arg3)){
-                pthread_mutex_unlock(&doc_lock);
+                pthread_mutex_unlock(&lock);
                 continue;
             }
-            pthread_mutex_unlock(&doc_lock);
+            pthread_mutex_unlock(&lock);
 
             printf("Command now: %s\n", command_input);
-            write(write_fd, command_input, CMD_LEN);
+            write(write_fd, command_input, strlen(command_input));
 
         }
     }
 
     
-
-
-
     markdown_free(doc);
-    log_free(doc_log);
     close(read_fd);
     close(write_fd);
     unlink(fifo_name1);

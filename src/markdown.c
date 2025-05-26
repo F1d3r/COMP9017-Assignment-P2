@@ -4,11 +4,14 @@
 
 #include "../libs/markdown.h"
 #include "../libs/document.h"
+#include "../libs/helper.h"
 
 #define SUCCESS 0 
 #define INVALID_CURSOR_POS -1
 #define DELETED_POSITION -2
 #define OUTDATED_VERSION -3
+
+#define CMD_LEN 256
 
 // === Init and Free ===
 document *markdown_init(void) {
@@ -16,6 +19,10 @@ document *markdown_init(void) {
     newDoc->version_num = 0;
     newDoc->doc_len = 0;
 
+    // Initialize the log.
+    newDoc->log_head = init_log();
+
+    // Initialize the first chunk.
     newDoc->first_chunk = (chunk*)malloc(sizeof(chunk));
     newDoc->first_chunk->next_chunk = NULL;
     newDoc->first_chunk->offset = 0;
@@ -23,19 +30,12 @@ document *markdown_init(void) {
     newDoc->first_chunk->content = (char*)malloc(sizeof(char)*(newDoc->first_chunk->length+1));
     newDoc->first_chunk->content[newDoc->first_chunk->length] = '\0';
 
-
-    // Next version.
-    newDoc->next_version = (document*)malloc(sizeof(document));
-    memcpy(newDoc->next_version, newDoc, sizeof(document));
-    newDoc->next_version->first_chunk = copy_chunk_list(newDoc->first_chunk);
-
     return newDoc;
 }
 
 void markdown_free(document *doc) {
+    log_free(doc->log_head);
     free_chunk_list(doc->first_chunk);
-    free_chunk_list(doc->next_version->first_chunk);
-    free(doc->next_version);
     free(doc);
     return;
 }
@@ -51,19 +51,18 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, const char *con
         return INVALID_CURSOR_POS;
     }
     
-    char* new_content = (char*)malloc(sizeof(char)*(doc->next_version->first_chunk->length+strlen(content)+1)); 
-    memcpy(new_content, doc->next_version->first_chunk->content, pos);
+    char* new_content = (char*)malloc(sizeof(char)*(doc->first_chunk->length+strlen(content)+1)); 
+    memcpy(new_content, doc->first_chunk->content, pos);
     memcpy(new_content+pos, content, strlen(content));
-    memcpy(new_content+pos+strlen(content), doc->next_version->first_chunk->content+pos, 
-        doc->next_version->first_chunk->length-pos);
-    free(doc->next_version->first_chunk->content);
-    new_content[doc->next_version->first_chunk->length+strlen(content)] = '\0';
+    memcpy(new_content+pos+strlen(content), doc->first_chunk->content+pos, 
+        doc->first_chunk->length-pos);
+    free(doc->first_chunk->content);
+    new_content[doc->first_chunk->length+strlen(content)] = '\0';
 
-    doc->next_version->first_chunk->content = new_content;
-    doc->next_version->first_chunk->length += strlen(content);
-    doc->next_version->doc_len += strlen(content);
+    doc->first_chunk->content = new_content;
+    doc->first_chunk->length += strlen(content);
+    doc->doc_len += strlen(content);
 
-    doc->next_version->version_num = doc->version_num+1;
     return SUCCESS;
 }
 
@@ -78,20 +77,19 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
         len = doc->first_chunk->length - pos;
     }
     char* new_content = (char*)malloc(sizeof(char)*(strlen(doc->first_chunk->content)-len+1));
-    strncpy(new_content, doc->next_version->first_chunk->content, pos);
-    printf("Chunk length: %d\n", doc->next_version->first_chunk->length);
-    if(pos+len < doc->next_version->first_chunk->length){
-        strncpy(new_content+pos, doc->next_version->first_chunk->content+pos+len, 
-            strlen(doc->next_version->first_chunk->content)-pos-len+1);
+    strncpy(new_content, doc->first_chunk->content, pos);
+    printf("Chunk length: %d\n", doc->first_chunk->length);
+    if(pos+len < doc->first_chunk->length){
+        strncpy(new_content+pos, doc->first_chunk->content+pos+len, 
+            strlen(doc->first_chunk->content)-pos-len+1);
     }
-    new_content[doc->next_version->first_chunk->length - len] = '\0';
-    char* temp = doc->next_version->first_chunk->content;
-    doc->next_version->first_chunk->content = new_content;
+    new_content[doc->first_chunk->length - len] = '\0';
+    char* temp = doc->first_chunk->content;
+    doc->first_chunk->content = new_content;
     free(temp);
-    doc->next_version->first_chunk->length -= len;
-    doc->next_version->doc_len -= len;
+    doc->first_chunk->length -= len;
+    doc->doc_len -= len;
 
-    doc->next_version->version_num = doc->version_num+1;
     return SUCCESS;
 }
 
@@ -304,7 +302,7 @@ char *markdown_flatten(const document *doc) {
     while(current_chunk != NULL){
         size += current_chunk->length;
         flatten_content = realloc(flatten_content, sizeof(char)*(size+1));
-        // Problem here.
+        
         memcpy(flatten_content+current_chunk->offset, 
             current_chunk->content, sizeof(char)*current_chunk->length);
         current_chunk = current_chunk->next_chunk;
@@ -315,11 +313,88 @@ char *markdown_flatten(const document *doc) {
 
 // === Versioning ===
 void markdown_increment_version(document* doc) {
-    chunk* temp = doc->first_chunk;
-    memcpy(doc, doc->next_version, sizeof(document));
-    doc->next_version->first_chunk = copy_chunk_list(doc->first_chunk);
+    // Go the the latest log.
+    log* last_log = doc->log_head;
+    while(last_log->next_log != NULL){
+        last_log = last_log->next_log;
+    }
+    // Iterate through the latest log. Process every command.
+    for(int i = 0; i < last_log->edits_num; i ++){
+        // Only process success commands.
+        if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+            char command_input[CMD_LEN];
+            strcpy(command_input, last_log->edits[i]->command);
+            char* command = NULL;
+            char* arg1 = NULL;
+            char* arg2 = NULL;
+            char* arg3 = NULL;
+            resolve_command(command_input, &command, &arg1, &arg2, &arg3);
 
-    free_chunk_list(temp);
+            if(strcmp(command, "INSERT") == 0){
+                printf("Inserting to document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                markdown_insert(doc, last_log->version_num, pos, arg2);
+            }
+            else if(strcmp(command, "DEL") == 0){
+                printf("Deleting from document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                size_t len = strtol(arg2, NULL, 10);
+                markdown_delete(doc, last_log->version_num, pos, len);
+            }
+            else if(strcmp(command, "BOLD") == 0){
+                printf("Bolding document.\n");
+                size_t pos1 = strtol(arg1, NULL, 10);
+                size_t pos2 = strtol(arg2, NULL, 10);
+                markdown_bold(doc, last_log->version_num, pos1, pos2);
+            }
+            else if(strcmp(command, "NEWLINE") == 0){
+                printf("Newline document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                markdown_newline(doc, last_log->version_num, pos);
+            }
+            else if(strcmp(command, "HEADING") == 0){
+                printf("Newline document.\n");
+                size_t level = strtol(arg1, NULL, 10);
+                size_t pos = strtol(arg2, NULL, 10);
+                markdown_heading(doc, last_log->version_num, level, pos);
+            }
+            else if(strcmp(command, "ITALIC") == 0){
+                printf("Italicing document.\n");
+                size_t start = strtol(arg1, NULL, 10);
+                size_t end = strtol(arg2, NULL, 10);
+                markdown_italic(doc, last_log->version_num, start, end);
+            }
+            else if(strcmp(command, "BLOCKQUOTE") == 0){
+                printf("Blocking quote document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                markdown_blockquote(doc, last_log->version_num, pos);
+            }
+            else if(strcmp(command, "CODE") == 0){
+                printf("Coding document.\n");
+                size_t start = strtol(arg1, NULL, 10);
+                size_t end = strtol(arg2, NULL, 10);
+                markdown_code(doc, last_log->version_num, start, end);
+            }
+            else if(strcmp(command, "HORIZONTAL_RULE") == 0){
+                printf("Ruling document.\n");
+                size_t pos = strtol(arg1, NULL, 10);
+                markdown_horizontal_rule(doc, last_log->version_num, pos);
+            }
+            else if(strcmp(command, "LINK") == 0){
+                printf("Linking document.\n");
+                size_t start = strtol(arg1, NULL, 10);
+                size_t end = strtol(arg2, NULL, 10);
+                markdown_link(doc, last_log->version_num, start, end, arg3);
+            }
+        }
+    }
 
+    // Increment document version if any changes made.
+    for(int i = 0; i < last_log->edits_num; i++){
+        if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
+            doc->version_num ++;
+            break;
+        }
+    }
 }
 
