@@ -24,6 +24,7 @@ typedef struct document{
     uint64_t doc_len;
     struct chunk* first_chunk;
     struct log* log_head;
+    struct document* next_doc;
 } document;
 
 typedef struct edit{

@@ -94,6 +94,7 @@ void* broadcast_thread_func(void* arg){
                 printf("New log:\n");
                 print_log(doc->log_head);
                 // Then update the document.
+                update_doc(doc);
                 markdown_increment_version(doc);
             }
             // No edit(success/reject) made in this broadcast. 

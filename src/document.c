@@ -221,6 +221,7 @@ void log_free(log* doc_log){
 }
 
 
+// Get a copy of exist chunk list.
 chunk* copy_chunk_list(chunk* chunk_head){
     chunk* new_chunk_list = (chunk*)malloc(sizeof(chunk));
     memcpy(new_chunk_list, chunk_head, sizeof(chunk));

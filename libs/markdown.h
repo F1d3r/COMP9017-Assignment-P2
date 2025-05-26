@@ -40,4 +40,7 @@ char *markdown_flatten(const document *doc);
 
 // === Versioning ===
 void markdown_increment_version(document *doc);
+
+void update_doc(document* doc);
+
 #endif // MARKDOWN_H
