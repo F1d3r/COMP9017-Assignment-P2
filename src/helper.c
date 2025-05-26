@@ -136,6 +136,7 @@ bool check_command_delete(document* doc, char* arg1, char* arg2){
     return true;
 }
 
+
 bool check_command_bold(document* doc, char* arg1, char* arg2){
     if(arg2 == NULL){
         printf("Invalid command.\n");
@@ -158,7 +159,7 @@ bool check_command_bold(document* doc, char* arg1, char* arg2){
     printf("Got position start: %ld.\n", pos1);
     printf("Got position end: %ld.\n", pos2);
 
-    if(pos1 > pos2){
+    if(pos1 >= pos2){
         printf("Invalid position index(pos1 > pos2).\n");
         return false;
     }
@@ -169,6 +170,31 @@ bool check_command_bold(document* doc, char* arg1, char* arg2){
     }
     if(pos2 > doc->doc_len){
         printf("Invalid length index(out of boundry).\n");
+        return false;
+    }
+    printf("Valid argument.\n");
+    return true;
+}
+
+
+bool check_command_newline(document* doc, char* arg1){
+    if(arg1 == NULL){
+        printf("Invalid command.\n");
+        return false;
+    }
+    size_t pos = 0;
+    // Check if the position index an integer. 
+    if(!check_integer(arg1)){
+        printf("Invalid position index.\n");
+        return false;
+    }
+
+    pos = strtol(arg1, NULL, 10);
+    printf("Got position start: %ld.\n", pos);
+
+    // Check position validation.
+    if(pos > doc->doc_len){
+        printf("Invalid position index(out of boundry).\n");
         return false;
     }
     printf("Valid argument.\n");
