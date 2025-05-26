@@ -25,6 +25,9 @@ log* doc_log;
 pthread_mutex_t doc_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
 
+bool connecting = false;
+
+
 void handle_SIGRTMIN(int sig){
     printf("Server responses. Establish connection.\n");
 }
@@ -65,7 +68,18 @@ void* broadcast_thread_func(void* arg){
             // There is data in the read_fd.
             // Read and handle the client requests from the pipe.
             memset(buff, 0, sizeof(buff));
-            read(read_fd, buff, BUFF_LEN);
+            ssize_t bytes_read = read(read_fd, buff, BUFF_LEN);
+            if(bytes_read == 0){
+                printf("Server closed conncetion.\n");
+                connecting = false;
+                break;
+            } 
+            else if(bytes_read < 0) {
+                perror("Read error");
+                connecting = false;
+                break;
+            }
+
             // printf("Got broadcast:\n%s.\n", buff);
             // Then resolve the broadcast message, 
             // to update the log, and local document.
@@ -93,7 +107,6 @@ int main(int argc, char *argv[]){
     char username[BUFF_LEN];
     char permission[BUFF_LEN];
     char buff[BUFF_LEN];
-    bool connecting = false;
     
     doc = markdown_init();
     doc_log = init_log();
@@ -208,7 +221,7 @@ int main(int argc, char *argv[]){
 
     // When the client is not interupted.
     // Keeps listening from the user input for commands.
-    while(!interupted && connecting){
+    while((!interupted) && connecting){
         char command_input[CMD_LEN];
         char temp[CMD_LEN];
         fgets(command_input, sizeof(command_input), stdin);
@@ -229,7 +242,9 @@ int main(int argc, char *argv[]){
         // Make sure the command is valid formatting.
         // DISCONNECT
         if(strcmp(command, "DISCONNECT\n")==0){
-            interupted = true;
+            printf("Disconnecting\n");
+            write(write_fd, command, CMD_LEN);
+            sleep(1);
             continue;
         }
         // DOC
@@ -282,14 +297,7 @@ int main(int argc, char *argv[]){
             }
 
         }
-
     }
-
-    
-    // Tell the server if interupted.
-    // if(interupted){
-    //     write(write_fd, "DISCONNECT\n", strlen("DISCONNECT\n"));
-    // }
 
     markdown_free(doc);
     log_free(doc_log);

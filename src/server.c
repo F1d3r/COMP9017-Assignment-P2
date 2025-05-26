@@ -204,11 +204,11 @@ void* thread_for_client(void* arg){
             char* arg3;
             resolve_command(temp, &command, &arg1, &arg2, &arg3);
 
-            // // If the command is disconnect.
-            // if(strcmp(command, "DISCONNECT\n") == 0){
-            //     connecting = false;
-            //     break;
-            // }else 
+            // If the command is disconnect.
+            if(strcmp(command, "DISCONNECT\n") == 0){
+                connecting = false;
+                break;
+            }else 
             if(strcmp(command, "INSERT") == 0){
                 // Remove the last '\n';
                 command_input[strlen(command_input)-1] = '\0';
