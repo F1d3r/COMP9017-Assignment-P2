@@ -108,7 +108,28 @@ int markdown_heading(document *doc, uint64_t version, size_t level, size_t pos) 
 }
 
 int markdown_bold(document *doc, uint64_t version, size_t start, size_t end) {
-    (void)doc; (void)version; (void)start; (void)end;
+    if(version != doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+        return OUTDATED_VERSION;
+    }
+    if(start > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    if(end > doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+        return INVALID_CURSOR_POS;
+    }
+    if(start > end){
+        printf("Invalid position: %ld|%ld\n", start, end);
+        return INVALID_CURSOR_POS;
+    }
+    char* bold_symbol = (char*)malloc(sizeof(char)*3);
+    strcpy(bold_symbol, "**");
+    markdown_insert(doc, version, end+1, bold_symbol);
+    markdown_insert(doc, version, start, bold_symbol);
+    free(bold_symbol);
+    
     return SUCCESS;
 }
 

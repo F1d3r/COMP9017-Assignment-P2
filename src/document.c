@@ -207,6 +207,14 @@ int update_doc(document* doc, log* doc_log){
                     num_edit_processed ++;
                 }
             }
+            else if(strcmp(command, "BOLD") == 0){
+                printf("Bolding document.\n");
+                size_t pos1 = strtol(arg1, NULL, 10);
+                size_t pos2 = strtol(arg2, NULL, 10);
+                if(markdown_bold(doc, last_log->version_num, pos1, pos2) == 0){
+                    num_edit_processed ++;
+                }
+            }
         }
     }
 

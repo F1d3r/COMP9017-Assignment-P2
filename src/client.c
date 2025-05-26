@@ -245,7 +245,7 @@ int main(int argc, char *argv[]){
             interupted = true;
             // Waiting for server closing the pipe.
             char dummy_buffer[1];
-            ssize_t result = read(read_fd, dummy_buffer, 1);
+            read(read_fd, dummy_buffer, 1);
             continue;
         }
         // DOC
@@ -281,6 +281,19 @@ int main(int argc, char *argv[]){
             // Check command argument validation.
             pthread_mutex_lock(&doc_lock);
             if(!check_command_delete(doc, arg1, arg2)){
+                pthread_mutex_unlock(&doc_lock);
+                continue;
+            }
+            pthread_mutex_unlock(&doc_lock);
+
+            printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, CMD_LEN);
+        }
+        // BOLD
+        else if(strcmp(command, "BOLD") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&doc_lock);
+            if(!check_command_bold(doc, arg1, arg2)){
                 pthread_mutex_unlock(&doc_lock);
                 continue;
             }
