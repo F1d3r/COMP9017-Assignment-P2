@@ -84,14 +84,27 @@ void* broadcast_thread_func(void* arg){
             // to update the log, and local document.
             pthread_mutex_lock(&log_lock);
             log* new_log = get_log(buff);
-            add_log(&doc_log, new_log);
-            pthread_mutex_unlock(&log_lock);
-            // Update doc.
-            int num_edit_processed = update_doc(doc, doc_log);
-            if(num_edit_processed != 0){
-                markdown_increment_version(doc);
-                new_log->version_num ++;
+            // add_log(&doc_log, new_log);
+
+            // Check the number of edits before adding to log.
+            if(new_log->edits_num != 0){
+                add_log(&doc_log, new_log);
+                pthread_mutex_lock(&doc_lock);
+                int num_edit_processed = update_doc(doc, doc_log);
+                if(num_edit_processed != 0){
+                    markdown_increment_version(doc);
+                    new_log->version_num ++;
+                }
+                pthread_mutex_unlock(&doc_lock);
+            }else{
+                if(new_log->edits != NULL){
+                    free(new_log->edits);
+                }
+                free(new_log);
             }
+            pthread_mutex_unlock(&log_lock);
+                
+            
         }
     }
 

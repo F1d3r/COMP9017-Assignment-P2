@@ -708,19 +708,22 @@ void* broadcast_thread_func(void* arg) {
         broadcast_to_all_clients(broadcast_message);
         // printf("Broadcasted log to all clients\n");
 
-        // Make a new log.
-        log* new_log = init_log();
-        // Check all commands in previous time interval.
-        // If there is at least one success, increase the version number.
-        if(num_edit_processed != 0){
-            new_log->version_num = last_log->version_num+1;
-            markdown_increment_version(doc);
-        }else{
-            new_log->version_num = last_log->version_num;
+        // Make a new log. If there are any commands.
+        if(last_log->edits_num != 0){
+            log* new_log = init_log();
+            // Check all commands in previous time interval.
+            // If there is at least one success, increase the version number.
+            if(num_edit_processed != 0){
+                new_log->version_num = last_log->version_num+1;
+                markdown_increment_version(doc);
+            }else{
+                new_log->version_num = last_log->version_num;
+            }
+            // Add the new log into the log list.
+            add_log(&doc_log, new_log);
         }
+        
 
-        // Add the new log into the log list.
-        add_log(&doc_log, new_log);
         pthread_mutex_unlock(&log_lock);
 
         
