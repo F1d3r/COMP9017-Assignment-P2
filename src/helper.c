@@ -108,6 +108,18 @@ void resolve_command(char* command_input, char** command, char** arg1, char** ar
         *arg2 = NULL;
         *arg3 = NULL;
     }
+    else if(strcmp(*command, "ORDERED_LIST") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        *arg2 = NULL;
+        *arg3 = NULL;
+    }
+    else if(strcmp(*command, "UNORDERED_LIST") == 0){
+        token = strtok(NULL, " ");
+        *arg1 = token;
+        *arg2 = NULL;
+        *arg3 = NULL;
+    }
     else if(strcmp(*command, "LINK") == 0){
         token = strtok(NULL, " ");
         *arg1 = token;

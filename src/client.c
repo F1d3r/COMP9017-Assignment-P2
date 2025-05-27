@@ -473,6 +473,32 @@ int main(int argc, char *argv[]){
             write(write_fd, command_input, strlen(command_input));
 
         }
+        // ORDERED_LIST
+        if(strcmp(command, "ORDERED_LIST") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&lock);
+            if(!check_command_newline(doc, arg1)){
+                pthread_mutex_unlock(&lock);
+                continue;
+            }
+            pthread_mutex_unlock(&lock);
+
+            // printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, strlen(command_input));
+        }
+        // UNORDERED_LIST
+        if(strcmp(command, "UNORDERED_LIST") == 0){
+            // Check command argument validation.
+            pthread_mutex_lock(&lock);
+            if(!check_command_newline(doc, arg1)){
+                pthread_mutex_unlock(&lock);
+                continue;
+            }
+            pthread_mutex_unlock(&lock);
+
+            // printf("Command now: %s\n", command_input);
+            write(write_fd, command_input, strlen(command_input));
+        }
     }
 
     
