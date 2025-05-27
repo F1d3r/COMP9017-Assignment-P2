@@ -717,18 +717,23 @@ void* broadcast_thread_func(void* arg) {
         // printf("Broadcasted log to all clients\n");
 
         // Update local documents according to the success log edits.
-        update_doc(doc);
-        markdown_increment_version(doc);
-
+        if(last_log->edits_num != 0){
+            update_doc(doc);
+            markdown_increment_version(doc);
+        }
 
         // Make a new log. If there are any commands.
         if(last_log->edits_num != 0){
             log* new_log = init_log();
             // Check all commands in previous time interval.
             // If there is at least one success, increase the version number.
+            
+            
             for(int i = 0; i < last_log->edits_num; i++){
                 if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
                     new_log->version_num = last_log->version_num+1;
+                    // doc->version_num++;
+                    // doc->next_doc->version_num++;
                     break;
                 }
             }
