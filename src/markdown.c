@@ -318,13 +318,9 @@ void markdown_print(const document *doc, FILE *stream) {
 }
 
 char *markdown_flatten(const document *doc) {
-    char* flatten_content = (char*)malloc(sizeof(char));
+    char* flatten_content = malloc(sizeof(char)*(doc->doc_len+1));
     chunk* current_chunk = doc->first_chunk;
-    int size = 0;
     while(current_chunk != NULL){
-        size += current_chunk->length;
-        flatten_content = realloc(flatten_content, sizeof(char)*(size+1));
-        
         memcpy(flatten_content+current_chunk->offset, 
             current_chunk->content, sizeof(char)*current_chunk->length);
         current_chunk = current_chunk->next_chunk;
