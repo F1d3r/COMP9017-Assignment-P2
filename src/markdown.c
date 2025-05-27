@@ -76,8 +76,8 @@ int markdown_insert(document *doc, uint64_t version, size_t pos, const char *con
     memcpy(new_content+pos, content, strlen(content));
     memcpy(new_content+pos+strlen(content), next_doc->first_chunk->content+pos, 
         next_doc->first_chunk->length-pos);
-    free(next_doc->first_chunk->content);
     new_content[next_doc->first_chunk->length+strlen(content)] = '\0';
+    free(next_doc->first_chunk->content);
 
     next_doc->first_chunk->content = new_content;
     next_doc->first_chunk->length += strlen(content);
@@ -319,6 +319,7 @@ void markdown_print(const document *doc, FILE *stream) {
 
 char *markdown_flatten(const document *doc) {
     char* flatten_content = malloc(sizeof(char)*(doc->doc_len+1));
+    memset(flatten_content, 0, doc->doc_len + 1);
     chunk* current_chunk = doc->first_chunk;
     while(current_chunk != NULL){
         memcpy(flatten_content+current_chunk->offset, 

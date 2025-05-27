@@ -718,7 +718,6 @@ void* broadcast_thread_func(void* arg) {
 
         // Update local documents according to the success log edits.
         update_doc(doc);
-        markdown_print(doc, stdout);
         markdown_increment_version(doc);
 
         // Make a new log. If there are any commands.
