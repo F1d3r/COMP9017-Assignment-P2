@@ -345,12 +345,12 @@ int main(int argc, char *argv[]){
         // INSERT
         else if(strcmp(command, "INSERT") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_insert(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_insert(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -358,12 +358,12 @@ int main(int argc, char *argv[]){
         // DELETE
         else if(strcmp(command, "DEL") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_delete(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_delete(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -371,12 +371,12 @@ int main(int argc, char *argv[]){
         // BOLD
         else if(strcmp(command, "BOLD") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_bold(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_bold(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -384,12 +384,12 @@ int main(int argc, char *argv[]){
         // NEWLINE
         else if(strcmp(command, "NEWLINE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_newline(doc, arg1)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_newline(doc, arg1)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -397,12 +397,12 @@ int main(int argc, char *argv[]){
         // NEWLINE
         else if(strcmp(command, "HEADING") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_heading(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_heading(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -410,12 +410,12 @@ int main(int argc, char *argv[]){
         // ITALIC
         else if(strcmp(command, "ITALIC") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_italic(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_italic(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -423,12 +423,12 @@ int main(int argc, char *argv[]){
         // BLOCKQUOTE
         else if(strcmp(command, "BLOCKQUOTE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_blockquote(doc, arg1)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_blockquote(doc, arg1)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -436,12 +436,12 @@ int main(int argc, char *argv[]){
         // CODE
         else if(strcmp(command, "CODE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_code(doc, arg1, arg2)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_code(doc, arg1, arg2)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -449,12 +449,12 @@ int main(int argc, char *argv[]){
         // HORIZONTAL_RULE
         else if(strcmp(command, "HORIZONTAL_RULE") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_horizontal(doc, arg1)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_horizontal(doc, arg1)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -462,12 +462,12 @@ int main(int argc, char *argv[]){
         // LINK
         if(strcmp(command, "LINK") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_link(doc, arg1, arg2, arg3)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_link(doc, arg1, arg2, arg3)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -476,12 +476,12 @@ int main(int argc, char *argv[]){
         // ORDERED_LIST
         if(strcmp(command, "ORDERED_LIST") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_newline(doc, arg1)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_newline(doc, arg1)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
@@ -489,12 +489,12 @@ int main(int argc, char *argv[]){
         // UNORDERED_LIST
         if(strcmp(command, "UNORDERED_LIST") == 0){
             // Check command argument validation.
-            pthread_mutex_lock(&lock);
-            if(!check_command_newline(doc, arg1)){
-                pthread_mutex_unlock(&lock);
-                continue;
-            }
-            pthread_mutex_unlock(&lock);
+            // pthread_mutex_lock(&lock);
+            // if(!check_command_newline(doc, arg1)){
+            //     pthread_mutex_unlock(&lock);
+            //     continue;
+            // }
+            // pthread_mutex_unlock(&lock);
 
             // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
