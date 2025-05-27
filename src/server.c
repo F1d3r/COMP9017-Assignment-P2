@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 100
 #define BUFF_LEN 1024
 #define CMD_LEN 256
 
@@ -158,10 +158,22 @@ void* thread_for_client(void* arg){
         write(write_fd, "Reject UNAUTHORISED", strlen("Reject UNAUTHORISED"));
         connecting = false;
         sleep(1);
+
+        // Client pid.
+        free(arg);
+        // File descriptors.
+        close(write_fd);
+        close(read_fd);
+        // FIFOs.
+        // Remove S2C pipe from array.
+        unlink(fifo_name1);
+        unlink(fifo_name2);
+        // printf("Thread %p for client: %d destroyed.\n", (void*)pthread_self(), client_pid);
+        pthread_exit(NULL);
     }
 
-    // Create a new client.
     Client* client = malloc(sizeof(Client));
+    // Create a new client.
     client->client_pid = client_pid;
     client->S2C_pipe_name = malloc(sizeof(char)*(strlen(fifo_name1)+1));
     strcpy(client->S2C_pipe_name, fifo_name1);
