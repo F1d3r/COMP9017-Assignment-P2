@@ -22,7 +22,6 @@ void add_client(Client*** clients, Client* client, int* clients_count){
     (*clients_count)++;
 }
 
-
 void remove_client(Client*** clients, Client* client, int* clients_count){
     for(int i = 0; i < *clients_count; i++){
         if((*clients)[i]->client_pid == client->client_pid){
@@ -31,11 +30,11 @@ void remove_client(Client*** clients, Client* client, int* clients_count){
             
             memmove((*clients)+i, (*clients)+i+1, sizeof(Client*)*(*clients_count-i-1));
             
-            (*clients_count)--;
             *clients = realloc(*clients, sizeof(Client*)*(*clients_count));
             break;
         }
     }
+    (*clients_count)--;
 }
 
 
