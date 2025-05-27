@@ -873,6 +873,13 @@ int main(int argc, char *argv[]){
         pthread_join(threads[i], NULL);
     }
 
+    // Save the file.
+    FILE* file = fopen("doc.md", "w");
+    char* content = markdown_flatten(doc);
+    fwrite(content, 1, doc->doc_len, file);
+    free(content);
+    fclose(file);
+
     // Free the users.
     destroy_users(users, total_user);
     markdown_free(doc);
