@@ -144,10 +144,10 @@ log* get_log(char* message){
                 char* reject_pos = strstr(remaining, " Reject");
                 
                 if(success_pos != NULL){
-        printf("Succ: %s\n", success_pos);
+        // printf("Succ: %s\n", success_pos);
                 }
                 if(reject_pos != NULL){
-        printf("Rej: %s\n", reject_pos);
+        // printf("Rej: %s\n", reject_pos);
                 }
                 if(success_pos != NULL) {
                     *success_pos = '\0';

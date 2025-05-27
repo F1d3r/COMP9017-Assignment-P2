@@ -84,8 +84,8 @@ void* broadcast_thread_func(void* arg){
             pthread_mutex_lock(&lock);
             // Resolve the broadcast to get a new log.
             log* new_log = get_log(buff);
-            printf("Got new log:\n");
-            print_log(new_log);
+            // printf("Got new log:\n");
+            // print_log(new_log);
 
             // Check the number of edits before adding to log.
             if(new_log->edits_num != 0){
@@ -330,17 +330,17 @@ int main(int argc, char *argv[]){
         // DOC
         else if(strcmp(command, "DOC?\n") == 0){
             markdown_print(doc, stdout);
-            printf("----------\n");
+            // printf("----------\n");
         }
         // PERM
         else if(strcmp(command, "PERM?\n") == 0){
             printf("%s\n", permission);
-            printf("----------\n");
+            // printf("----------\n");
         }
         // LOG
         else if(strcmp(command, "LOG?\n") == 0){
             print_log(doc->log_head);
-            printf("----------\n");
+            // printf("----------\n");
         }
         // INSERT
         else if(strcmp(command, "INSERT") == 0){

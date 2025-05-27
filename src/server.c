@@ -852,13 +852,13 @@ int main(int argc, char *argv[]){
         }else if(strcmp(input_buff, "DOC?\n") == 0){
             pthread_mutex_lock(&lock);
             markdown_print(doc, stdout);
-            printf("----------\n");
+            // printf("----------\n");
             printf("\n");
             pthread_mutex_unlock(&lock);
         }else if(strcmp(input_buff, "LOG?\n") == 0){
             pthread_mutex_lock(&lock);
             print_log((doc->log_head));
-            printf("----------\n");
+            // printf("----------\n");
             pthread_mutex_unlock(&lock);
         }else{
             // printf("Invalid command.\n");
