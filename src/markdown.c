@@ -215,8 +215,14 @@ int markdown_blockquote(document *doc, uint64_t version, size_t pos) {
         printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
         return INVALID_CURSOR_POS;
     }
-    char* newline_symbol = (char*)malloc(sizeof(char)*3);
-    strcpy(newline_symbol, "> ");
+    char* newline_symbol = NULL;
+    if(doc->next_doc->first_chunk->content[pos-1] != '\n'){
+        newline_symbol = (char*)malloc(sizeof(char)*4);
+        strcpy(newline_symbol, "\n> ");
+    }else{
+        newline_symbol = (char*)malloc(sizeof(char)*4);
+        strcpy(newline_symbol, "> ");
+    }
     markdown_insert(doc, version, pos, newline_symbol);
     free(newline_symbol);
     
@@ -272,10 +278,10 @@ int markdown_horizontal_rule(document *doc, uint64_t version, size_t pos) {
     char* newline_symbol = NULL;
     if(doc->next_doc->first_chunk->content[pos-1] != '\n'){
         newline_symbol = realloc(newline_symbol, sizeof(char)*7);
-        strcpy(newline_symbol, "\n---\n\n");
+        strcpy(newline_symbol, "\n---\n");
     }else{
         newline_symbol = realloc(newline_symbol, sizeof(char)*6);
-        strcpy(newline_symbol, "---\n\n");
+        strcpy(newline_symbol, "---\n");
     }
 
     markdown_insert(doc, version, pos, newline_symbol);
