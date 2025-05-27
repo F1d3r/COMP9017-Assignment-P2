@@ -74,14 +74,7 @@ void add_log(log** log_head, log* new_log){
     while(last_log->next_log != NULL){
         last_log = last_log->next_log;
     }
-    // Copy the edits if version number is the same.
-    if(last_log->version_num == new_log->version_num){
-        last_log->edits = new_log->edits;
-        last_log->edits_num = new_log->edits_num;
-        free(new_log);
-    }else{
-        last_log->next_log = new_log;
-    }
+    last_log->next_log = new_log;
     return;
 }
 
@@ -151,10 +144,10 @@ log* get_log(char* message){
                 char* reject_pos = strstr(remaining, " Reject");
                 
                 if(success_pos != NULL){
-        // printf("Succ: %s\n", success_pos);
+        printf("Succ: %s\n", success_pos);
                 }
                 if(reject_pos != NULL){
-        // printf("Rej: %s\n", reject_pos);
+        printf("Rej: %s\n", reject_pos);
                 }
                 if(success_pos != NULL) {
                     *success_pos = '\0';

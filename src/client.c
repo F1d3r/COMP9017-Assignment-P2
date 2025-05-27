@@ -27,7 +27,7 @@ bool connecting = false;
 
 
 void handle_SIGRTMIN(){
-    printf("Server responses. Establish connection.\n");
+    // printf("Server responses. Establish connection.\n");
 }
 
 void handle_SIGINT(){
@@ -144,8 +144,8 @@ int main(int argc, char *argv[]){
         }else{
             strcpy(username, argv[2]);
             strcat(username, "\n");
-            printf("Got username: %s|", username);
-            printf("Got server pid: %ld|", server_pid_value);
+            // printf("Got username: %s|", username);
+            // printf("Got server pid: %ld|", server_pid_value);
         }
     }
     // Get the server and self pid.
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]){
     }
     // Write the username into the pipe
     write(write_fd, username, strlen(username));
-    printf("Username written.\n");
+    // printf("Username written.\n");
 
     int read_fd = open(fifo_name1, O_RDONLY);
     if(read_fd == -1) {
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]){
     }
     buff[pos] = '\0';
     strcpy(permission, buff);
-    printf("Got permission: %s\n", permission);
+    // printf("Got permission: %s\n", permission);
     
     // Check permission
     if(strcmp(permission, "Reject UNAUTHORISED") == 0) {
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]){
         doc->version_num = version_num;
         doc->next_doc->version_num = version_num;
         doc->log_head->version_num = version_num;
-        printf("Got document version: %ld\n", version_num);
+        // printf("Got document version: %ld\n", version_num);
 
         // Read document length.
         memset(buff, 0, sizeof(buff));
@@ -241,7 +241,7 @@ int main(int argc, char *argv[]){
         buff[pos] = '\0';
         doc_len = strtol(buff, NULL, 10);
         doc->doc_len = doc_len;
-        printf("Got document length: %ld\n", doc_len);
+        // printf("Got document length: %ld\n", doc_len);
 
         // Read the document according to length.
         if(doc_len > 0) {
@@ -268,7 +268,7 @@ int main(int argc, char *argv[]){
                 if(document_content != NULL) {
                     // Remove last '\n'
                     document_content[doc_len] = '\0';
-                    printf("Got document content (%ld bytes):\n%s\n", doc_len, document_content);
+                    // printf("Got document content (%ld bytes):\n%s\n", doc_len, document_content);
                     
                     if(doc->first_chunk != NULL){
                         if(doc->first_chunk->content != NULL){
@@ -285,7 +285,7 @@ int main(int argc, char *argv[]){
             }
         } 
         else {
-            printf("Empty document.\n");
+            // printf("Empty document.\n");
         }
     }
 
@@ -352,7 +352,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // DELETE
@@ -365,7 +365,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // BOLD
@@ -378,7 +378,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // NEWLINE
@@ -391,7 +391,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // NEWLINE
@@ -404,7 +404,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // ITALIC
@@ -417,7 +417,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // BLOCKQUOTE
@@ -430,7 +430,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // CODE
@@ -443,7 +443,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // HORIZONTAL_RULE
@@ -456,7 +456,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
         }
         // LINK
@@ -469,7 +469,7 @@ int main(int argc, char *argv[]){
             }
             pthread_mutex_unlock(&lock);
 
-            printf("Command now: %s\n", command_input);
+            // printf("Command now: %s\n", command_input);
             write(write_fd, command_input, strlen(command_input));
 
         }

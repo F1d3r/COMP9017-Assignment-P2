@@ -167,8 +167,8 @@ bool check_command_delete(document* doc, char* arg1, char* arg2){
     else{
         pos = strtol(arg1, NULL, 10);
         len = strtol(arg2, NULL, 10);
-        printf("Got position: %ld.\n", pos);
-        printf("Got length: %ld.\n", len);
+        // printf("Got position: %ld.\n", pos);
+        // printf("Got length: %ld.\n", len);
     }
     // Check position validation.
     if(pos > doc->doc_len){
@@ -199,8 +199,8 @@ bool check_command_bold(document* doc, char* arg1, char* arg2){
 
     pos1 = strtol(arg1, NULL, 10);
     pos2 = strtol(arg2, NULL, 10);
-    printf("Got position start: %ld.\n", pos1);
-    printf("Got position end: %ld.\n", pos2);
+    // printf("Got position start: %ld.\n", pos1);
+    // printf("Got position end: %ld.\n", pos2);
 
     if(pos1 >= pos2){
         printf("Invalid position index(pos1 > pos2).\n");
@@ -234,7 +234,7 @@ bool check_command_newline(document* doc, char* arg1){
     }
 
     pos = strtol(arg1, NULL, 10);
-    printf("Got position start: %ld.\n", pos);
+    // printf("Got position start: %ld.\n", pos);
 
     // Check position validation.
     if(pos > doc->doc_len){
@@ -265,7 +265,7 @@ bool check_command_heading(document* doc, char* arg1, char* arg2){
 
     level = strtol(arg1, NULL, 10);
     pos = strtol(arg2, NULL, 10);
-    printf("Got position start: %ld.\n", pos);
+    // printf("Got position start: %ld.\n", pos);
 
     // Check position validation.
     if(level < 1 || level > 3){
@@ -300,8 +300,8 @@ bool check_command_italic(document* doc, char* arg1, char* arg2){
 
     start = strtol(arg1, NULL, 10);
     end = strtol(arg2, NULL, 10);
-    printf("Got position start: %ld.\n", start);
-    printf("Got position end: %ld.\n", end);
+    // printf("Got position start: %ld.\n", start);
+    // printf("Got position end: %ld.\n", end);
 
     // Check position validation.
     if(start > doc->doc_len){
@@ -335,7 +335,7 @@ bool check_command_blockquote(document* doc, char* arg1){
     }
 
     pos = strtol(arg1, NULL, 10);
-    printf("Got position start: %ld.\n", pos);
+    // printf("Got position start: %ld.\n", pos);
 
     // Check position validation.
     if(pos > doc->doc_len){
@@ -367,8 +367,8 @@ bool check_command_code(document* doc, char* arg1, char* arg2){
 
     start = strtol(arg1, NULL, 10);
     end = strtol(arg2, NULL, 10);
-    printf("Got position start: %ld.\n", start);
-    printf("Got position end: %ld.\n", end);
+    // printf("Got position start: %ld.\n", start);
+    // printf("Got position end: %ld.\n", end);
 
     // Check position validation.
     if(start > doc->doc_len){
@@ -402,7 +402,7 @@ bool check_command_horizontal(document* doc, char* arg1){
     }
 
     pos = strtol(arg1, NULL, 10);
-    printf("Got position: %ld.\n", pos);
+    // printf("Got position: %ld.\n", pos);
 
     // Check position validation.
     if(pos > doc->doc_len){
@@ -433,8 +433,8 @@ bool check_command_link(document* doc, char* arg1, char* arg2, char* arg3){
 
     start = strtol(arg1, NULL, 10);
     end = strtol(arg2, NULL, 10);
-    printf("Got position start: %ld.\n", start);
-    printf("Got position end: %ld.\n", end);
+    // printf("Got position start: %ld.\n", start);
+    // printf("Got position end: %ld.\n", end);
 
     // Check position validation.
     if(start > doc->doc_len){

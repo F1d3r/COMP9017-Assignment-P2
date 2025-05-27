@@ -370,57 +370,57 @@ void update_doc(document* doc){
             resolve_command(command_input, &command, &arg1, &arg2, &arg3);
 
             if(strcmp(command, "INSERT") == 0){
-                printf("Inserting to document.\n");
+                // printf("Inserting to document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 markdown_insert(doc, last_log->version_num-1, pos, arg2);
             }
             else if(strcmp(command, "DEL") == 0){
-                printf("Deleting from document.\n");
+                // printf("Deleting from document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 size_t len = strtol(arg2, NULL, 10);
                 markdown_delete(doc, last_log->version_num-1, pos, len);
             }
             else if(strcmp(command, "BOLD") == 0){
-                printf("Bolding document.\n");
+                // printf("Bolding document.\n");
                 size_t pos1 = strtol(arg1, NULL, 10);
                 size_t pos2 = strtol(arg2, NULL, 10);
                 markdown_bold(doc, last_log->version_num-1, pos1, pos2);
             }
             else if(strcmp(command, "NEWLINE") == 0){
-                printf("Newline document.\n");
+                // printf("Newline document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 markdown_newline(doc, last_log->version_num-1, pos);
             }
             else if(strcmp(command, "HEADING") == 0){
-                printf("Newline document.\n");
+                // printf("Newline document.\n");
                 size_t level = strtol(arg1, NULL, 10);
                 size_t pos = strtol(arg2, NULL, 10);
                 markdown_heading(doc, last_log->version_num-1, level, pos);
             }
             else if(strcmp(command, "ITALIC") == 0){
-                printf("Italicing document.\n");
+                // printf("Italicing document.\n");
                 size_t start = strtol(arg1, NULL, 10);
                 size_t end = strtol(arg2, NULL, 10);
                 markdown_italic(doc, last_log->version_num-1, start, end);
             }
             else if(strcmp(command, "BLOCKQUOTE") == 0){
-                printf("Blocking quote document.\n");
+                // printf("Blocking quote document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 markdown_blockquote(doc, last_log->version_num-1, pos);
             }
             else if(strcmp(command, "CODE") == 0){
-                printf("Coding document.\n");
+                // printf("Coding document.\n");
                 size_t start = strtol(arg1, NULL, 10);
                 size_t end = strtol(arg2, NULL, 10);
                 markdown_code(doc, last_log->version_num-1, start, end);
             }
             else if(strcmp(command, "HORIZONTAL_RULE") == 0){
-                printf("Ruling document.\n");
+                // printf("Ruling document.\n");
                 size_t pos = strtol(arg1, NULL, 10);
                 markdown_horizontal_rule(doc, last_log->version_num-1, pos);
             }
             else if(strcmp(command, "LINK") == 0){
-                printf("Linking document.\n");
+                // printf("Linking document.\n");
                 size_t start = strtol(arg1, NULL, 10);
                 size_t end = strtol(arg2, NULL, 10);
                 markdown_link(doc, last_log->version_num-1, start, end, arg3);
