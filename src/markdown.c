@@ -339,19 +339,11 @@ void markdown_increment_version(document* doc) {
         last_log = last_log->next_log;
     }
 
-    // Check any updated made.
-    while(last_log->next_log != NULL){
-        last_log = last_log->next_log;
-    }
-    for(int i = 0; i < last_log->edits_num; i++){
-        if(strcmp(last_log->edits[i]->result, "SUCCESS") == 0){
-            // Copy the change if any.
-            free_chunk_list(doc->first_chunk);
-            doc->first_chunk = copy_chunk_list(doc->next_doc->first_chunk);
-            doc->next_doc->version_num += 1;
-            break;
-        }
-    }
+    // Copy the change if any.
+    free_chunk_list(doc->first_chunk);
+    doc->first_chunk = copy_chunk_list(doc->next_doc->first_chunk);
+    doc->next_doc->version_num += 1;
+    
     doc->version_num = doc->next_doc->version_num;
     doc->doc_len = doc->next_doc->doc_len;
 
