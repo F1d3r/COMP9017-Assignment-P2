@@ -272,10 +272,10 @@ int markdown_horizontal_rule(document *doc, uint64_t version, size_t pos) {
     char* newline_symbol = NULL;
     if(doc->next_doc->first_chunk->content[pos-1] != '\n'){
         newline_symbol = realloc(newline_symbol, sizeof(char)*7);
-        strcpy(newline_symbol, "\n---\n");
+        strcpy(newline_symbol, "\n---\n\n");
     }else{
         newline_symbol = realloc(newline_symbol, sizeof(char)*6);
-        strcpy(newline_symbol, "---\n");
+        strcpy(newline_symbol, "---\n\n");
     }
 
     markdown_insert(doc, version, pos, newline_symbol);
