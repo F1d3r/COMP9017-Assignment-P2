@@ -118,12 +118,12 @@ int markdown_delete(document *doc, uint64_t version, size_t pos, size_t len) {
 
 // === Formatting Commands ===
 int markdown_newline(document *doc, uint64_t version, size_t pos) {
-    if(version != doc->version_num){
-        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+    if(version != doc->next_doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->next_doc->version_num);
         return OUTDATED_VERSION;
     }
-    if(pos > doc->doc_len){
-        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
+    if(pos > doc->next_doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->next_doc->doc_len);
         return INVALID_CURSOR_POS;
     }
     char* newline_symbol = (char*)malloc(sizeof(char)*2);
@@ -135,12 +135,12 @@ int markdown_newline(document *doc, uint64_t version, size_t pos) {
 }
 
 int markdown_heading(document *doc, uint64_t version, size_t level, size_t pos) {
-    if(version != doc->version_num){
-        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+    if(version != doc->next_doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->next_doc->version_num);
         return OUTDATED_VERSION;
     }
-    if(pos > doc->doc_len){
-        printf("Invalid position: %ld|%ld\n", pos, doc->doc_len);
+    if(pos > doc->next_doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", pos, doc->next_doc->doc_len);
         return INVALID_CURSOR_POS;
     }
     char* heading_symbol = (char*)malloc(sizeof(char)*5);
@@ -155,16 +155,16 @@ int markdown_heading(document *doc, uint64_t version, size_t level, size_t pos) 
 }
 
 int markdown_bold(document *doc, uint64_t version, size_t start, size_t end) {
-    if(version != doc->version_num){
-        printf("Version outdated: %ld|%ld\n", version, doc->version_num);
+    if(version != doc->next_doc->version_num){
+        printf("Version outdated: %ld|%ld\n", version, doc->next_doc->version_num);
         return OUTDATED_VERSION;
     }
-    if(start > doc->doc_len){
-        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+    if(start > doc->next_doc->doc_len){
+        printf("Invalid position: %ld|%ld\n", start, doc->next_doc->doc_len);
         return INVALID_CURSOR_POS;
     }
-    if(end > doc->doc_len+1){
-        printf("Invalid position: %ld|%ld\n", start, doc->doc_len);
+    if(end > doc->next_doc->doc_len+1){
+        printf("Invalid position: %ld|%ld\n", start, doc->next_doc->doc_len);
         return INVALID_CURSOR_POS;
     }
     if(start > end){

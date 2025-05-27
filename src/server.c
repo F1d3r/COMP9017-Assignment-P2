@@ -264,7 +264,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -300,7 +300,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -344,7 +344,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -380,7 +380,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -424,7 +424,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -475,7 +475,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -511,7 +511,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -562,7 +562,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -598,7 +598,7 @@ void* thread_for_client(void* arg){
                 command_input[strlen(command_input)-1] = '\0';
 
                 // Check permission.
-                if(strcmp(permission, "write\n") != 0){
+                if(strcmp(permission, "write") != 0){
                     // Unauthorised.
                     pthread_mutex_lock(&lock);
                     add_edit(&(doc->log_head), username, command_input, "Reject", "UNAUTHORISED");
@@ -718,6 +718,7 @@ void* broadcast_thread_func(void* arg) {
 
         // Update local documents according to the success log edits.
         update_doc(doc);
+        markdown_print(doc, stdout);
         markdown_increment_version(doc);
 
         // Make a new log. If there are any commands.
