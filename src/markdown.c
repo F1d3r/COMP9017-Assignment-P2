@@ -216,9 +216,14 @@ int markdown_blockquote(document *doc, uint64_t version, size_t pos) {
         return INVALID_CURSOR_POS;
     }
     char* newline_symbol = NULL;
-    if(doc->next_doc->first_chunk->content[pos-1] != '\n'){
-        newline_symbol = (char*)malloc(sizeof(char)*4);
-        strcpy(newline_symbol, "\n> ");
+    if(pos != 0){
+        if(doc->next_doc->first_chunk->content[pos-1] != '\n'){
+            newline_symbol = (char*)malloc(sizeof(char)*4);
+            strcpy(newline_symbol, "\n> ");
+        }else{
+            newline_symbol = (char*)malloc(sizeof(char)*4);
+            strcpy(newline_symbol, "> ");
+        }
     }else{
         newline_symbol = (char*)malloc(sizeof(char)*4);
         strcpy(newline_symbol, "> ");
