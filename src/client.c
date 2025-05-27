@@ -80,19 +80,17 @@ void* broadcast_thread_func(void* arg){
             }
 
             // Got broadcast:
-            printf("Got broadcast:\n%s", buff);
+            // printf("Got broadcast:\n%s", buff);
             pthread_mutex_lock(&lock);
             // Resolve the broadcast to get a new log.
             log* new_log = get_log(buff);
-            printf("Log get:\n");
+            printf("Got new log:\n");
             print_log(new_log);
 
             // Check the number of edits before adding to log.
             if(new_log->edits_num != 0){
                 // Add log.
                 add_log(&(doc->log_head), new_log);
-                printf("New log:\n");
-                print_log(doc->log_head);
                 // Then update the document.
                 update_doc(doc);
                 markdown_increment_version(doc);
@@ -228,6 +226,8 @@ int main(int argc, char *argv[]){
         buff[pos] = '\0';
         version_num = strtol(buff, NULL, 10);
         doc->version_num = version_num;
+        doc->next_doc->version_num = version_num;
+        doc->log_head->version_num = version_num;
         printf("Got document version: %ld\n", version_num);
 
         // Read document length.

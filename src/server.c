@@ -720,6 +720,7 @@ void* broadcast_thread_func(void* arg) {
         update_doc(doc);
         markdown_increment_version(doc);
 
+
         // Make a new log. If there are any commands.
         if(last_log->edits_num != 0){
             log* new_log = init_log();
@@ -734,7 +735,7 @@ void* broadcast_thread_func(void* arg) {
             // Add the new log into the log list.
             add_log(&(doc->log_head), new_log);
         }
-        
+
 
         pthread_mutex_unlock(&lock);
 
@@ -783,6 +784,7 @@ void handle_SIGINT(int sig){
 int main(int argc, char *argv[]){
     // Initialize the document.
     doc = markdown_init();
+    doc->log_head->version_num = 1;
 
     // Server PID.  
     pid_t server_pid = getpid();

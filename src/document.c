@@ -99,7 +99,7 @@ log* get_log(char* message){
     char* token = strtok(msg_cpy, "\n");
 
     if(token != NULL){
-        printf("Got version line: %s\n", token);
+        // printf("Got version line: %s\n", token);
         char* ver_line = (char*)malloc(sizeof(char)*strlen(token) + 1);
         strcpy(ver_line, token);
         char* ver_save_ptr;

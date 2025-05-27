@@ -137,14 +137,14 @@ bool check_command_insert(document* doc, char* arg1, char* arg2){
         return false;
     }else{
         pos = strtol(arg1, NULL, 10);
-        printf("Got position: %ld.\n", pos);
+        // printf("Got position: %ld.\n", pos);
     }
     // Check position validation.
     if(pos > doc->doc_len){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -175,7 +175,7 @@ bool check_command_delete(document* doc, char* arg1, char* arg2){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -215,7 +215,7 @@ bool check_command_bold(document* doc, char* arg1, char* arg2){
         printf("Invalid length index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -241,7 +241,7 @@ bool check_command_newline(document* doc, char* arg1){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -276,7 +276,7 @@ bool check_command_heading(document* doc, char* arg1, char* arg2){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -316,7 +316,7 @@ bool check_command_italic(document* doc, char* arg1, char* arg2){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -342,7 +342,7 @@ bool check_command_blockquote(document* doc, char* arg1){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -383,7 +383,7 @@ bool check_command_code(document* doc, char* arg1, char* arg2){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -409,7 +409,7 @@ bool check_command_horizontal(document* doc, char* arg1){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
 
@@ -449,6 +449,6 @@ bool check_command_link(document* doc, char* arg1, char* arg2, char* arg3){
         printf("Invalid position index(out of boundry).\n");
         return false;
     }
-    printf("Valid argument.\n");
+    // printf("Valid argument.\n");
     return true;
 }
