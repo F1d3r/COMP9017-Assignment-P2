@@ -18,10 +18,11 @@ void print_log(log* doc_log){
                 current_log->edits[i]->command, 
                 current_log->edits[i]->result);
             if(current_log->edits[i]->reject_reason != NULL){
-                printf(" %s\n", current_log->edits[i]->reject_reason);
-            }else{
-                printf("\n");
+                if(strlen(current_log->edits[i]->reject_reason) != 0 ){
+                    printf(" %s", current_log->edits[i]->reject_reason);
+                }
             }
+            printf("\n");
         }
         printf("END\n");
         current_log = current_log->next_log;

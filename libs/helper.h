@@ -8,24 +8,4 @@ bool check_integer(char* str);
 
 void resolve_command(char* command_input, char** command, char** arg1, char** arg2, char** arg3);
 
-bool check_command_insert(document* doc, char* arg1, char* arg2);
-
-bool check_command_delete(document* doc, char* arg1, char* arg2);
-
-bool check_command_bold(document* doc, char* arg1, char* arg2);
-
-bool check_command_newline(document* doc, char* arg1);
-
-bool check_command_heading(document* doc, char* arg1, char* arg2);
-
-bool check_command_italic(document* doc, char* arg1, char* arg2);
-
-bool check_command_blockquote(document* doc, char* arg1);
-
-bool check_command_code(document* doc, char* arg1, char* arg2);
-
-bool check_command_horizontal(document* doc, char* arg1);
-
-bool check_command_link(document* doc, char* arg1, char* arg2, char* arg3);
-
 #endif
